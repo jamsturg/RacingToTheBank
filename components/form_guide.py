@@ -39,7 +39,7 @@ def render_form_guide(form_data: pd.DataFrame):
         return df.style\
             .apply(lambda x: ['background-color: #F0F2F6' if i % 2 else '' 
                             for i in range(len(x))], axis=0)\
-            .applymap(rating_color, subset=['Rating'])
+            .map(rating_color, subset=['Rating'])
     
     # Display styled dataframe
     st.dataframe(
@@ -60,11 +60,48 @@ def render_form_guide(form_data: pd.DataFrame):
 
 def create_speed_map(form_data: pd.DataFrame) -> go.Figure:
     """Create interactive speed map visualization"""
-    
-    # Sort by barrier
-    data = form_data.sort_values('Barrier')
-    
+    # Create figure
     fig = go.Figure()
+    
+    # Handle empty data case
+    if form_data.empty or 'Barrier' not in form_data.columns:
+        fig.add_annotation(
+            text="No data available for speed map",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False
+        )
+        fig.update_layout(
+            xaxis_title="Barrier",
+            yaxis_title="",
+            yaxis_showticklabels=False,
+            plot_bgcolor='white',
+            showlegend=False,
+            height=400
+        )
+        return fig
+    
+    # Sort by barrier and ensure numeric values
+    data = form_data.copy()
+    data['Barrier'] = pd.to_numeric(data['Barrier'], errors='coerce')
+    data = data.dropna(subset=['Barrier']).sort_values('Barrier')
+    
+    if data.empty:
+        fig.add_annotation(
+            text="No valid barrier data available",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False
+        )
+        fig.update_layout(
+            xaxis_title="Barrier",
+            yaxis_title="",
+            yaxis_showticklabels=False,
+            plot_bgcolor='white',
+            showlegend=False,
+            height=400
+        )
+        return fig
     
     # Calculate marker colors based on ratings
     colors = ['#90EE90' if r >= 80 else '#FFFFE0' if r >= 70 else '#FFB6C1' 
@@ -93,7 +130,8 @@ def create_speed_map(form_data: pd.DataFrame) -> go.Figure:
         customdata=list(zip(data['Rating'], data['Jockey']))
     ))
     
-    # Customize layout
+    # Update layout with safe barrier range
+    max_barrier = int(data['Barrier'].max()) if not data.empty else 12
     fig.update_layout(
         xaxis_title="Barrier",
         yaxis_title="",
@@ -103,11 +141,10 @@ def create_speed_map(form_data: pd.DataFrame) -> go.Figure:
         margin=dict(t=50, b=50, l=50, r=50)
     )
     
-    # Add grid
     fig.update_xaxes(
         gridcolor='lightgrey',
         gridwidth=1,
-        range=[0, max(data['Barrier']) + 1]
+        range=[0, max_barrier + 1]
     )
     
     return fig

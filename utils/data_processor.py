@@ -14,7 +14,17 @@ class RaceDataProcessor:
         }
 
     def prepare_form_guide(self, race_data) -> pd.DataFrame:
-        form_data = []
+        """Process race data and return a properly formatted DataFrame"""
+        # Define column dtypes
+        dtypes = {
+            'Number': 'str',
+            'Horse': 'str',
+            'Barrier': 'str',
+            'Weight': 'float64',
+            'Jockey': 'str',
+            'Form': 'str',
+            'Rating': 'float64'
+        }
         
         try:
             # Extract runners based on data structure
@@ -24,37 +34,55 @@ class RaceDataProcessor:
                     payload = race_data['payLoad']
                     if isinstance(payload, dict) and 'runners' in payload:
                         runners = payload['runners']
-                    elif isinstance(payload, list):
-                        runners = payload
+                    else:
+                        runners = [payload] if isinstance(payload, dict) else payload
                 elif 'runners' in race_data:
                     runners = race_data['runners']
             elif isinstance(race_data, list):
                 runners = race_data
-                
+            
             # Process each runner
+            form_data = []
             for runner in runners:
                 if not isinstance(runner, dict):
                     continue
-                    
-                # Extract horse data with nested dictionary handling
-                horse_data = {
-                    'Number': runner.get('number', runner.get('runnerNumber', '')),
-                    'Horse': runner.get('name', runner.get('runnerName', '')),
-                    'Barrier': runner.get('barrier', runner.get('barrierNumber', '')),
-                    'Weight': self._extract_weight(runner),
-                    'Jockey': self._extract_jockey_name(runner),
-                    'Form': self._extract_form(runner),
-                    'Rating': self.calculate_rating(runner)
-                }
                 
-                # Only add valid entries
-                if horse_data['Horse'] and horse_data['Number']:
-                    form_data.append(horse_data)
+                try:
+                    # Extract and convert data with proper type handling
+                    horse_data = {
+                        'Number': str(runner.get('number', '')),
+                        'Horse': str(runner.get('name', '')),
+                        'Barrier': str(runner.get('barrier', '')),
+                        'Weight': self._extract_weight(runner),
+                        'Jockey': self._extract_jockey_name(runner),
+                        'Form': self._extract_form(runner),
+                        'Rating': float(self.calculate_rating(runner))
+                    }
                     
-            return pd.DataFrame(form_data)
+                    # Only add valid entries
+                    if horse_data['Horse'] and horse_data['Number']:
+                        form_data.append(horse_data)
+                except Exception as e:
+                    print(f"Error processing runner: {str(e)}")
+                    continue
+            
+            # Create DataFrame with specified dtypes
+            df = pd.DataFrame(form_data)
+            
+            # Ensure all required columns exist with correct types
+            for col, dtype in dtypes.items():
+                if col not in df.columns:
+                    df[col] = pd.Series(dtype=dtype)
+                else:
+                    df[col] = df[col].astype(dtype)
+            
+            # Reorder columns to match expected format
+            return df[list(dtypes.keys())]
+            
         except Exception as e:
             print(f"Error processing race data: {str(e)}")
-            return pd.DataFrame(columns=['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating'])
+            # Return empty DataFrame with correct structure
+            return pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in dtypes.items()})
 
     def _extract_weight(self, runner: Dict) -> float:
         """Safely extract weight from runner data"""
@@ -71,14 +99,14 @@ class RaceDataProcessor:
         """Safely extract jockey name from runner data"""
         jockey = runner.get('jockey', {})
         if isinstance(jockey, dict):
-            return jockey.get('fullName', jockey.get('name', ''))
+            return str(jockey.get('fullName', jockey.get('name', '')))
         return str(jockey) if jockey else ''
 
     def _extract_form(self, runner: Dict) -> str:
         """Safely extract form data from runner"""
         form = runner.get('form', runner.get('last5Runs', ''))
         if isinstance(form, dict):
-            return form.get('last5Runs', form.get('lastFive', ''))
+            return str(form.get('last5Runs', form.get('lastFive', '')))
         return str(form) if form else ''
 
     def calculate_rating(self, runner: Dict) -> float:
