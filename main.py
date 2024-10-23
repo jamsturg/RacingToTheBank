@@ -31,18 +31,17 @@ def main():
     try:
         # Meeting selection with proper error handling
         meeting_options = {}
-        if isinstance(meetings, list):
-            for m in meetings:
-                if isinstance(m, dict):
-                    venue_name = m.get('venueName', 'Unknown Track')
-                    meeting_id = m.get('meetingId', '')
-                    if meeting_id:
-                        meeting_options[f"{venue_name} - {meeting_id}"] = meeting_id
-                else:
-                    st.error("Invalid meeting data structure")
-        else:
-            st.error("No meetings data available")
-        
+        for m in meetings:
+            try:
+                # Extract meeting data safely
+                venue_name = m['venueName'] if 'venueName' in m else 'Unknown Track'
+                meeting_id = m['meetingId'] if 'meetingId' in m else None
+                
+                if meeting_id:
+                    meeting_options[f"{venue_name} - {meeting_id}"] = meeting_id
+            except (TypeError, KeyError):
+                continue
+
         if not meeting_options:
             st.error("No valid meetings found")
             return
