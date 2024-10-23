@@ -1,0 +1,25 @@
+.stApp {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.race-card {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #e6e6e6;
+    margin-bottom: 1rem;
+}
+
+.prediction-table {
+    font-size: 0.9rem;
+}
+
+.speed-map {
+    border: 1px solid #e6e6e6;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.highlight-row {
+    background-color: rgba(255, 75, 75, 0.1);
+}
