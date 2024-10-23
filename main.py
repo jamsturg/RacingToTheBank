@@ -29,13 +29,19 @@ def main():
         return
     
     try:
-        # Meeting selection with error handling
+        # Meeting selection with proper error handling
         meeting_options = {}
-        for m in meetings:
-            venueName = m.get('venueName', 'Unknown Track')
-            meetingId = m.get('meetingId', '')
-            if meetingId:  # Only add if meetingId exists
-                meeting_options[f"{venueName} - {meetingId}"] = meetingId
+        if isinstance(meetings, list):
+            for m in meetings:
+                if isinstance(m, dict):
+                    venue_name = m.get('venueName', 'Unknown Track')
+                    meeting_id = m.get('meetingId', '')
+                    if meeting_id:
+                        meeting_options[f"{venue_name} - {meeting_id}"] = meeting_id
+                else:
+                    st.error("Invalid meeting data structure")
+        else:
+            st.error("No meetings data available")
         
         if not meeting_options:
             st.error("No valid meetings found")
@@ -65,7 +71,7 @@ def main():
             st.error("Unable to fetch race data")
             return
         
-        # Display race information with error handling
+        # Display race information with proper error handling
         race_info = race_data.get('payLoad', {}).get('raceInfo', {})
         col1, col2, col3 = st.columns(3)
         
