@@ -105,33 +105,47 @@ def main():
         st.subheader("Race Details")
         
         # Get race info from the processed data
-        if isinstance(race_data, dict) and 'payLoad' in race_data:
-            race_info = race_data.get('payLoad', {}).get('raceInfo', {})
-        else:
+        race_info = {}
+        try:
+            if isinstance(race_data, list) and race_data:
+                first_race = race_data[0]
+                race_info = {
+                    'distance': first_race.get('distance', 'Unknown'),
+                    'trackCondition': first_race.get('trackCondition', 'Unknown'),
+                    'prizeMoney': first_race.get('prizeMoney', 0)
+                }
+            elif isinstance(race_data, dict):
+                if 'payLoad' in race_data:
+                    race_info = race_data['payLoad'].get('raceInfo', {})
+                else:
+                    race_info = race_data.get('raceInfo', {})
+        except Exception as e:
+            st.error(f"Error processing race details: {str(e)}")
             race_info = {}
-        
-        # Display race metrics
+
+        # Display race metrics with safe defaults
         st.metric("Distance", f"{race_info.get('distance', 'Unknown')}m")
         st.metric("Track Condition", race_info.get('trackCondition', 'Unknown'))
         st.metric("Prize Money", f"${race_info.get('prizeMoney', 0):,}")
         
         # AI Predictions
         st.subheader("AI Predictions")
-        predictions = [
-            {
-                'horse': row['Horse'],
-                'score': row['Rating'],
-                'barrier': row['Barrier'],
-                'jockey': row['Jockey']
-            }
-            for _, row in form_data.nlargest(3, 'Rating').iterrows()
-        ]
-        
-        render_predictions(predictions)
-        
-        # Confidence chart
-        confidence_chart = create_confidence_chart(predictions)
-        st.plotly_chart(confidence_chart, use_container_width=True)
+        if not form_data.empty:
+            predictions = [
+                {
+                    'horse': row['Horse'],
+                    'score': row['Rating'],
+                    'barrier': row['Barrier'],
+                    'jockey': row['Jockey']
+                }
+                for _, row in form_data.nlargest(3, 'Rating').iterrows()
+            ]
+            
+            render_predictions(predictions)
+            
+            # Confidence chart
+            confidence_chart = create_confidence_chart(predictions)
+            st.plotly_chart(confidence_chart, use_container_width=True)
     
     # Chat interface in third column if enabled
     if st.session_state.show_chat:
