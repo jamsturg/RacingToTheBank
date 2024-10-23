@@ -7,13 +7,13 @@ def render_form_guide(form_data: pd.DataFrame):
     
     # Filter columns to display
     display_columns = [
+        'Number',
         'Horse',
-        'Barrier',
+        'Barrier', 
         'Weight',
         'Jockey',
         'Form',
-        'Rating',
-        'Fixed Odds'
+        'Rating'
     ]
     
     filtered_data = form_data[display_columns].copy()
