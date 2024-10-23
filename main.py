@@ -28,78 +28,92 @@ def main():
         st.error("No meetings available for today")
         return
     
-    # Meeting selection
-    meeting_options = {f"{m['venueName']} - {m['meetingId']}": m['meetingId'] 
-                      for m in meetings}
-    selected_meeting = st.sidebar.selectbox(
-        "Select Meeting",
-        options=list(meeting_options.keys())
-    )
-    meeting_id = meeting_options[selected_meeting]
-    
-    # Race number selection
-    race_number = st.sidebar.number_input(
-        "Race Number",
-        min_value=1,
-        max_value=12,
-        value=1
-    )
-    
-    # Main content
-    st.title("Racing Analysis Platform")
-    
-    # Fetch race data
-    race_data = api_client.get_race_data(meeting_id, race_number)
-    
-    if not race_data:
-        st.error("Unable to fetch race data")
-        return
-    
-    # Display race information
-    race_info = race_data.get('payLoad', {}).get('raceInfo', {})
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Distance", f"{race_info.get('distance', 0)}m")
-    with col2:
-        st.metric("Track Condition", race_info.get('trackCondition', 'Unknown'))
-    with col3:
-        st.metric("Prize Money", f"${race_info.get('prizeMoney', 0):,}")
-    
-    # Process and display form guide
-    form_data = data_processor.prepare_form_guide(race_data)
-    render_form_guide(form_data)
-    
-    # Create and display speed map
-    st.subheader("Speed Map")
-    speed_map = create_speed_map(form_data)
-    st.plotly_chart(speed_map)
-    
-    # Generate and display predictions
-    predictions = [
-        {
-            'horse': row['Horse'],
-            'score': row['Rating'],
-            'barrier': row['Barrier'],
-            'jockey': row['Jockey']
-        }
-        for _, row in form_data.nlargest(3, 'Rating').iterrows()
-    ]
-    
-    render_predictions(predictions)
-    
-    # Display confidence chart
-    confidence_chart = create_confidence_chart(predictions)
-    st.plotly_chart(confidence_chart)
-    
-    # Add auto-refresh functionality
-    st.sidebar.button("Refresh Data")
-    
-    # Footer
-    st.markdown("---")
-    st.markdown(
-        "Data provided by PuntingForm API. Predictions are for entertainment purposes only."
-    )
+    try:
+        # Meeting selection with error handling for missing keys
+        meeting_options = {}
+        for m in meetings:
+            track_name = m.get('track', {}).get('name', 'Unknown Track')
+            meeting_id = m.get('meetingId', '')
+            if meeting_id:  # Only add if meeting_id exists
+                meeting_options[f"{track_name} - {meeting_id}"] = meeting_id
+        
+        if not meeting_options:
+            st.error("No valid meetings found")
+            return
+            
+        selected_meeting = st.sidebar.selectbox(
+            "Select Meeting",
+            options=list(meeting_options.keys())
+        )
+        meeting_id = meeting_options[selected_meeting]
+        
+        # Race number selection
+        race_number = st.sidebar.number_input(
+            "Race Number",
+            min_value=1,
+            max_value=12,
+            value=1
+        )
+        
+        # Main content
+        st.title("Racing Analysis Platform")
+        
+        # Fetch race data
+        race_data = api_client.get_race_data(meeting_id, race_number)
+        
+        if not race_data:
+            st.error("Unable to fetch race data")
+            return
+        
+        # Display race information with error handling
+        race_info = race_data.get('payLoad', {}).get('raceInfo', {})
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.metric("Distance", f"{race_info.get('distance', 'Unknown')}m")
+        with col2:
+            st.metric("Track Condition", race_info.get('trackCondition', 'Unknown'))
+        with col3:
+            prize_money = race_info.get('prizeMoney', 0)
+            st.metric("Prize Money", f"${prize_money:,}" if prize_money else "Unknown")
+        
+        # Process and display form guide
+        form_data = data_processor.prepare_form_guide(race_data)
+        render_form_guide(form_data)
+        
+        # Create and display speed map
+        st.subheader("Speed Map")
+        speed_map = create_speed_map(form_data)
+        st.plotly_chart(speed_map)
+        
+        # Generate and display predictions
+        predictions = [
+            {
+                'horse': row['Horse'],
+                'score': row['Rating'],
+                'barrier': row['Barrier'],
+                'jockey': row['Jockey']
+            }
+            for _, row in form_data.nlargest(3, 'Rating').iterrows()
+        ]
+        
+        render_predictions(predictions)
+        
+        # Display confidence chart
+        confidence_chart = create_confidence_chart(predictions)
+        st.plotly_chart(confidence_chart)
+        
+        # Add auto-refresh functionality
+        st.sidebar.button("Refresh Data")
+        
+        # Footer
+        st.markdown("---")
+        st.markdown(
+            "Data provided by PuntingForm API. Predictions are for entertainment purposes only."
+        )
+        
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main()
