@@ -13,29 +13,33 @@ class RaceDataProcessor:
             'track_condition': 0.10
         }
 
-    def prepare_form_guide(self, race_data: Dict) -> pd.DataFrame:
-        # Handle case where race_data is a list
-        if isinstance(race_data, list):
-            runners = race_data
-        else:
-            # Handle case where race_data is a dictionary
-            runners = race_data.get('payLoad', {}).get('runners', [])
-
+    def prepare_form_guide(self, race_data) -> pd.DataFrame:
+        # Initialize empty form data list
         form_data = []
+        
+        # If race_data is a list, treat it as runners directly
+        runners = race_data if isinstance(race_data, list) else race_data.get('payLoad', {}).get('runners', [])
+        
         for runner in runners:
             try:
+                # Extract data with safe fallbacks
+                name = runner.get('name', runner.get('horseName', ''))
+                barrier = runner.get('barrier', runner.get('barrierNumber', ''))
+                weight = runner.get('weight', runner.get('handicapWeight', 0))
+                jockey_data = runner.get('jockey', {})
+                jockey_name = jockey_data.get('fullName', jockey_data.get('name', ''))
+                
                 form_data.append({
                     'Number': runner.get('number', ''),
-                    'Horse': runner.get('name', ''),
-                    'Barrier': runner.get('barrier', ''),
-                    'Weight': float(runner.get('weight', 0)),
-                    'Jockey': runner.get('jockey', {}).get('fullName', ''),
-                    'Trainer': runner.get('trainer', {}).get('fullName', ''),
+                    'Horse': name,
+                    'Barrier': barrier,
+                    'Weight': float(weight) if weight else 0,
+                    'Jockey': jockey_name,
                     'Form': runner.get('form', ''),
                     'Rating': self.calculate_rating(runner)
                 })
             except Exception as e:
-                continue  # Skip invalid runners
+                continue
                 
         return pd.DataFrame(form_data)
 
