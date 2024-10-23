@@ -13,6 +13,12 @@ def main():
         layout="wide"
     )
 
+    # Initialize session state for chat
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    if 'show_chat' not in st.session_state:
+        st.session_state.show_chat = False
+
     # Full-width header
     st.markdown("""
         <h1 style='text-align: center; padding: 1rem; background-color: #FF4B4B; color: white;'>
@@ -26,6 +32,9 @@ def main():
     
     # Sidebar navigation
     st.sidebar.title("Races")
+    
+    # Chat toggle
+    st.session_state.show_chat = st.sidebar.checkbox("Show Chat Assistant", value=st.session_state.show_chat)
     
     # Get today's meetings
     today = datetime.now().strftime("%Y-%m-%d")
@@ -66,7 +75,10 @@ def main():
     )
     
     # Main content area with grid layout
-    col1, col2 = st.columns([3, 1])
+    if st.session_state.show_chat:
+        col1, col2, col3 = st.columns([3, 1, 1])
+    else:
+        col1, col2 = st.columns([3, 1])
     
     with col1:
         st.subheader("Form Guide")
@@ -91,7 +103,12 @@ def main():
     
     with col2:
         st.subheader("Race Details")
-        race_info = race_data.get('payLoad', {}).get('raceInfo', {})
+        
+        # Get race info from the processed data
+        if isinstance(race_data, dict) and 'payLoad' in race_data:
+            race_info = race_data.get('payLoad', {}).get('raceInfo', {})
+        else:
+            race_info = {}
         
         # Display race metrics
         st.metric("Distance", f"{race_info.get('distance', 'Unknown')}m")
@@ -115,6 +132,25 @@ def main():
         # Confidence chart
         confidence_chart = create_confidence_chart(predictions)
         st.plotly_chart(confidence_chart, use_container_width=True)
+    
+    # Chat interface in third column if enabled
+    if st.session_state.show_chat:
+        with col3:
+            st.subheader("Race Assistant")
+            
+            # Display chat messages
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+            
+            # Chat input
+            if prompt := st.chat_input("Ask about the race..."):
+                # Add user message to chat history
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                
+                # Add assistant response
+                response = f"I can help you analyze the race at {selected_meeting.split(' - ')[0]}. What would you like to know?"
+                st.session_state.messages.append({"role": "assistant", "content": response})
     
     # Add auto-refresh functionality
     if st.sidebar.button("Refresh Data"):

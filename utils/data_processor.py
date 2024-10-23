@@ -14,22 +14,29 @@ class RaceDataProcessor:
         }
 
     def prepare_form_guide(self, race_data: Dict) -> pd.DataFrame:
-        """Convert race data to pandas DataFrame for form guide"""
-        runners = race_data.get('payLoad', {}).get('runners', [])
-        
+        # Handle case where race_data is a list
+        if isinstance(race_data, list):
+            runners = race_data
+        else:
+            # Handle case where race_data is a dictionary
+            runners = race_data.get('payLoad', {}).get('runners', [])
+
         form_data = []
         for runner in runners:
-            form_data.append({
-                'Number': runner.get('number', ''),
-                'Horse': runner.get('name', ''),
-                'Barrier': runner.get('barrier', ''),
-                'Weight': float(runner.get('weight', 0)),
-                'Jockey': runner.get('jockey', {}).get('fullName', ''),
-                'Trainer': runner.get('trainer', {}).get('fullName', ''),
-                'Form': runner.get('form', ''),
-                'Rating': self.calculate_rating(runner)
-            })
-        
+            try:
+                form_data.append({
+                    'Number': runner.get('number', ''),
+                    'Horse': runner.get('name', ''),
+                    'Barrier': runner.get('barrier', ''),
+                    'Weight': float(runner.get('weight', 0)),
+                    'Jockey': runner.get('jockey', {}).get('fullName', ''),
+                    'Trainer': runner.get('trainer', {}).get('fullName', ''),
+                    'Form': runner.get('form', ''),
+                    'Rating': self.calculate_rating(runner)
+                })
+            except Exception as e:
+                continue  # Skip invalid runners
+                
         return pd.DataFrame(form_data)
 
     def calculate_rating(self, runner: Dict) -> float:
