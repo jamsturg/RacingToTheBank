@@ -1,0 +1,33 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Racing.com API Test</title>
+</head>
+<body>
+    <h1>Racing.com API Test</h1>
+    <button onclick="testAPI()">Test API</button>
+    <div id="result"></div>
+
+    <script>
+        function testAPI() {
+            const date = new Date().toISOString().split('T')[0];
+            const url = `https://api.racing.com/api/horse-racing/meeting/${date}`;
+            
+            fetch(url)
+                .then(response => {
+                    document.getElementById('result').innerHTML = `Status: ${response.status}<br>Status Text: ${response.statusText}`;
+                    return response.text();
+                })
+                .then(data => {
+                    document.getElementById('result').innerHTML += `<br>Data: ${data}`;
+                })
+                .catch(error => {
+                    document.getElementById('result').innerHTML = `Error: ${error}`;
+                });
+        }
+    </script>
+</body>
+</html>
