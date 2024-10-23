@@ -17,31 +17,36 @@ class RaceDataProcessor:
         # Initialize empty form data list
         form_data = []
         
-        # If race_data is a list, treat it as runners directly
-        runners = race_data if isinstance(race_data, list) else race_data.get('payLoad', {}).get('runners', [])
-        
-        for runner in runners:
-            try:
-                # Extract data with safe fallbacks
-                name = runner.get('name', runner.get('horseName', ''))
-                barrier = runner.get('barrier', runner.get('barrierNumber', ''))
-                weight = runner.get('weight', runner.get('handicapWeight', 0))
-                jockey_data = runner.get('jockey', {})
-                jockey_name = jockey_data.get('fullName', jockey_data.get('name', ''))
-                
-                form_data.append({
-                    'Number': runner.get('number', ''),
-                    'Horse': name,
-                    'Barrier': barrier,
-                    'Weight': float(weight) if weight else 0,
-                    'Jockey': jockey_name,
-                    'Form': runner.get('form', ''),
-                    'Rating': self.calculate_rating(runner)
-                })
-            except Exception as e:
-                continue
-                
-        return pd.DataFrame(form_data)
+        try:
+            # Handle both list and dictionary response formats
+            runners = []
+            if isinstance(race_data, list):
+                runners = race_data
+            elif isinstance(race_data, dict):
+                runners = race_data.get('payLoad', {}).get('runners', [])
+            
+            # Process each runner
+            for runner in runners:
+                if not isinstance(runner, dict):
+                    continue
+                    
+                try:
+                    form_data.append({
+                        'Number': runner.get('number', ''),
+                        'Horse': runner.get('name', runner.get('horseName', '')),
+                        'Barrier': runner.get('barrier', runner.get('barrierNumber', '')),
+                        'Weight': float(runner.get('weight', 0)),
+                        'Jockey': runner.get('jockey', {}).get('fullName', ''),
+                        'Form': runner.get('form', ''),
+                        'Rating': self.calculate_rating(runner)
+                    })
+                except Exception as e:
+                    continue
+                    
+            return pd.DataFrame(form_data)
+        except Exception as e:
+            print(f"Error processing race data: {str(e)}")
+            return pd.DataFrame()  # Return empty DataFrame on error
 
     def calculate_rating(self, runner: Dict) -> float:
         """Calculate comprehensive rating for a runner"""
