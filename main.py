@@ -29,10 +29,11 @@ def main():
         return
     
     try:
-        # Meeting selection with error handling for missing keys
+        # Meeting selection with proper error handling
         meeting_options = {}
         for m in meetings:
-            track_name = m.get('track', {}).get('name', 'Unknown Track')
+            track = m.get('track', {})
+            track_name = track.get('name', 'Unknown Track')
             meeting_id = m.get('meetingId', '')
             if meeting_id:  # Only add if meeting_id exists
                 meeting_options[f"{track_name} - {meeting_id}"] = meeting_id
@@ -70,7 +71,8 @@ def main():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("Distance", f"{race_info.get('distance', 'Unknown')}m")
+            distance = race_info.get('distance', 'Unknown')
+            st.metric("Distance", f"{distance}m" if distance != 'Unknown' else distance)
         with col2:
             st.metric("Track Condition", race_info.get('trackCondition', 'Unknown'))
         with col3:
