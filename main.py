@@ -29,14 +29,13 @@ def main():
         return
     
     try:
-        # Meeting selection with proper error handling
+        # Meeting selection with error handling
         meeting_options = {}
         for m in meetings:
-            track = m.get('track', {})
-            track_name = track.get('name', 'Unknown Track')
-            meeting_id = m.get('meetingId', '')
-            if meeting_id:  # Only add if meeting_id exists
-                meeting_options[f"{track_name} - {meeting_id}"] = meeting_id
+            venueName = m.get('venueName', 'Unknown Track')
+            meetingId = m.get('meetingId', '')
+            if meetingId:  # Only add if meetingId exists
+                meeting_options[f"{venueName} - {meetingId}"] = meetingId
         
         if not meeting_options:
             st.error("No valid meetings found")
