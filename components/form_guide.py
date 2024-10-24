@@ -2,14 +2,69 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 
+def add_filter_controls():
+    st.subheader("Filter Options")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        min_rating = st.number_input("Minimum Rating", 0.0, 100.0, 0.0)
+        min_win_rate = st.number_input("Minimum Win Rate (%)", 0.0, 100.0, 0.0)
+    
+    with col2:
+        weight_range = st.slider("Weight Range (kg)", 50.0, 65.0, (50.0, 65.0))
+        barrier_range = st.slider("Barrier Range", 1, 24, (1, 24))
+    
+    with col3:
+        confidence_filter = st.multiselect(
+            "Confidence Level",
+            ["High", "Medium", "Low"],
+            default=["High", "Medium", "Low"]
+        )
+        trend_filter = st.multiselect(
+            "Performance Trend",
+            ["Improving", "Stable", "Declining"],
+            default=["Improving", "Stable", "Declining"]
+        )
+    
+    if st.button("Reset Filters"):
+        st.experimental_rerun()
+    
+    return {
+        'min_rating': min_rating,
+        'min_win_rate': min_win_rate,
+        'weight_range': weight_range,
+        'barrier_range': barrier_range,
+        'confidence': confidence_filter,
+        'trend': trend_filter
+    }
+
 def render_form_guide(form_data: pd.DataFrame):
     if form_data.empty:
         st.warning("No form guide data available for this race.")
         return
         
+    # Add filter controls
+    filters = add_filter_controls()
+    
+    # Apply filters
+    filtered_data = form_data.copy()
+    
+    filtered_data = filtered_data[
+        (filtered_data['Rating'] >= filters['min_rating']) &
+        (filtered_data['win_rate'] >= filters['min_win_rate']) &
+        (filtered_data['Weight'].between(*filters['weight_range'])) &
+        (filtered_data['Barrier'].astype(float).between(*filters['barrier_range'])) &
+        (filtered_data['confidence'].isin(filters['confidence'])) &
+        (filtered_data['trend'].isin(filters['trend']))
+    ]
+    
+    if filtered_data.empty:
+        st.warning("No horses match the selected filters.")
+        return
+        
     # Add statistical predictions and confidence levels
     st.subheader("Statistical Analysis")
-    for _, row in form_data.iterrows():
+    for _, row in filtered_data.iterrows():
         with st.expander(f"{row['Horse']} - Advanced Analysis"):
             col1, col2, col3 = st.columns(3)
             
@@ -42,7 +97,7 @@ def render_form_guide(form_data: pd.DataFrame):
     ]
     
     try:
-        filtered_data = form_data[display_columns].copy()
+        filtered_data = filtered_data[display_columns].copy()
     except KeyError:
         st.error("Form guide data structure mismatch. Please check the data format.")
         return
