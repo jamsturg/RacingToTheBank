@@ -7,24 +7,27 @@ def render_form_guide(form_data: pd.DataFrame):
         st.warning("No form guide data available for this race.")
         return
         
-    # Add historical performance metrics
-    st.subheader("Historical Performance")
+    # Add statistical predictions and confidence levels
+    st.subheader("Statistical Analysis")
     for _, row in form_data.iterrows():
-        with st.expander(f"{row['Horse']} - Historical Analysis"):
+        with st.expander(f"{row['Horse']} - Advanced Analysis"):
             col1, col2, col3 = st.columns(3)
             
             with col1:
+                st.metric("AI Rating", f"{row.get('rating', 0):.1f}")
                 st.metric("Win Rate", f"{row.get('win_rate', 0)}%")
                 st.metric("Best Distance", row.get('best_distance', 'Unknown'))
                 
             with col2:
+                st.metric("Confidence", row.get('confidence', 'Unknown'))
                 st.metric("Place Rate", f"{row.get('place_rate', 0)}%")
                 st.metric("Current Trend", row.get('trend', 'Unknown'))
                 
             with col3:
-                st.metric("Avg Position", row.get('avg_position', 0))
-                st.metric("Preferred Track", row.get('preferred_condition', 'Unknown'))
-        
+                st.metric("Model Agreement", row.get('model_agreement', 'Unknown'))
+                st.metric("Seasonal Effect", "Yes" if row.get('seasonal_effect', False) else "No")
+                st.metric("Track Suitability", row.get('preferred_condition', 'Unknown'))
+    
     # Filter columns to display
     display_columns = [
         'Number',
@@ -33,13 +36,15 @@ def render_form_guide(form_data: pd.DataFrame):
         'Weight',
         'Jockey',
         'Form',
-        'Rating'
+        'Rating',
+        'confidence',
+        'trend'
     ]
     
     try:
         filtered_data = form_data[display_columns].copy()
     except KeyError:
-        st.error("Form guide data structure mismatch. Please try another race.")
+        st.error("Form guide data structure mismatch. Please check the data format.")
         return
     
     # Add sorting options
@@ -48,7 +53,7 @@ def render_form_guide(form_data: pd.DataFrame):
     
     sorted_data = filtered_data.sort_values(by=sort_col, ascending=ascending)
     
-    # Style the dataframe with error handling
+    # Style the dataframe
     def style_dataframe(df):
         try:
             styled = df.style.apply(
@@ -57,7 +62,16 @@ def render_form_guide(form_data: pd.DataFrame):
                 axis=0
             )
             
-            # Apply rating colors only if Rating column exists
+            # Apply confidence level colors
+            if 'confidence' in df.columns:
+                styled = styled.apply(lambda x: [
+                    'background-color: #90EE90' if v == 'High'
+                    else 'background-color: #FFFFE0' if v == 'Medium'
+                    else 'background-color: #FFB6C1' if v == 'Low'
+                    else '' for v in x
+                ], subset=['confidence'])
+            
+            # Apply rating colors
             if 'Rating' in df.columns:
                 styled = styled.apply(lambda x: [
                     'background-color: #90EE90' if isinstance(v, (int, float)) and v >= 80
@@ -100,14 +114,6 @@ def create_speed_map(form_data: pd.DataFrame) -> go.Figure:
             x=0.5, y=0.5,
             showarrow=False
         )
-        fig.update_layout(
-            xaxis_title="Barrier",
-            yaxis_title="",
-            yaxis_showticklabels=False,
-            plot_bgcolor='white',
-            showlegend=False,
-            height=400
-        )
         return fig
     
     # Ensure required columns exist
@@ -141,11 +147,20 @@ def create_speed_map(form_data: pd.DataFrame) -> go.Figure:
     # Ensure Rating is numeric
     data['Rating'] = pd.to_numeric(data['Rating'], errors='coerce').fillna(0)
     
-    # Calculate marker colors
-    colors = ['#90EE90' if r >= 80 else '#FFFFE0' if r >= 70 else '#FFB6C1' 
-              for r in data['Rating']]
+    # Calculate marker colors based on confidence levels
+    colors = []
+    for _, row in data.iterrows():
+        if 'confidence' in row:
+            if row['confidence'] == 'High':
+                colors.append('#90EE90')
+            elif row['confidence'] == 'Medium':
+                colors.append('#FFFFE0')
+            else:
+                colors.append('#FFB6C1')
+        else:
+            colors.append('#FFB6C1')
     
-    # Add horses to their barriers with error handling
+    # Add horses to their barriers
     try:
         fig.add_trace(go.Scatter(
             x=data['Barrier'],
@@ -175,7 +190,7 @@ def create_speed_map(form_data: pd.DataFrame) -> go.Figure:
         print(f"Error creating speed map trace: {str(e)}")
         return fig
     
-    # Update layout with safe barrier range
+    # Update layout
     try:
         max_barrier = int(data['Barrier'].max())
         fig.update_layout(
