@@ -6,6 +6,7 @@ from openai import OpenAI
 from utils.api_client import RacingAPIClient
 from utils.data_processor import RaceDataProcessor
 from utils.statistical_predictor import StatisticalPredictor
+from utils.export_utils import format_race_data, export_to_csv, export_to_json, export_to_text, export_to_pdf
 from components.form_guide import render_form_guide, create_speed_map
 from components.predictions import render_predictions, create_confidence_chart
 from typing import Dict
@@ -169,6 +170,56 @@ def main():
             form_data = form_data.merge(
                 prediction_df, left_on='Horse', right_on='horse', how='left'
             )
+
+            # Add export buttons
+            st.markdown("### Export Options")
+            col_export1, col_export2, col_export3, col_export4 = st.columns(4)
+            
+            with col_export1:
+                # Export to CSV
+                csv_data = export_to_csv(form_data)
+                st.download_button(
+                    "Download Form Guide (CSV)",
+                    csv_data,
+                    "form_guide.csv",
+                    "text/csv",
+                    key='download-csv'
+                )
+            
+            with col_export2:
+                # Export to JSON
+                export_data = format_race_data(form_data, predictions, extract_race_details(race_data))
+                json_data = export_to_json(export_data)
+                st.download_button(
+                    "Download Complete Analysis (JSON)",
+                    json_data,
+                    "race_analysis.json",
+                    "application/json",
+                    key='download-json'
+                )
+            
+            with col_export3:
+                # Export to Text Report
+                text_report = export_to_text(export_data)
+                st.download_button(
+                    "Download Analysis Report (TXT)",
+                    text_report,
+                    "race_analysis.txt",
+                    "text/plain",
+                    key='download-txt'
+                )
+                
+            with col_export4:
+                # Export to PDF
+                pdf_data = export_to_pdf(export_data)
+                if pdf_data:
+                    st.download_button(
+                        "Download Complete Report (PDF)",
+                        pdf_data,
+                        "race_analysis.pdf",
+                        "application/pdf",
+                        key='download-pdf'
+                    )
 
         render_form_guide(form_data)
         st.subheader("Speed Map")
