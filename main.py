@@ -3,7 +3,7 @@ from datetime import datetime
 import pytz
 from typing import Dict, List
 import logging
-from tab_api_client import TABApiClient, RaceType
+from punting_form_analyzer import PuntingFormAPI
 from account_management import AccountManager
 from betting_system_integration import BettingSystemIntegration
 from race_information import RaceInformation
@@ -25,25 +25,68 @@ if 'client' not in st.session_state:
     st.session_state.client = None
 if 'selected_race' not in st.session_state:
     st.session_state.selected_race = None
+if 'last_error' not in st.session_state:
+    st.session_state.last_error = None
 
 def initialize_client():
-    """Initialize TAB API client"""
+    """Initialize Punting Form API client"""
     if st.session_state.client is None:
         try:
-            bearer_token = st.secrets.get("TAB_BEARER_TOKEN")
-            if not bearer_token:
-                bearer_token = st.text_input(
-                    "Enter TAB Bearer Token",
-                    type="password"
-                )
-                if not bearer_token:
-                    st.warning("Please enter your TAB Bearer Token to continue")
-                    st.stop()
+            api_key = st.secrets.get("PUNTING_FORM_API_KEY")
+            proxy_url = st.secrets.get("PROXY_URL")
             
-            st.session_state.client = TABApiClient(bearer_token)
+            if not api_key:
+                st.error("Missing Punting Form API key")
+                st.stop()
+                
+            if not proxy_url:
+                st.warning("Missing proxy configuration - requests may be rate limited")
+                
+            st.session_state.client = PuntingFormAPI(api_key)
+            st.session_state.last_error = None
         except Exception as e:
+            st.session_state.last_error = str(e)
             st.error(f"Failed to initialize client: {str(e)}")
             st.stop()
+
+def format_meeting_name(meeting: Dict) -> str:
+    """Format meeting name for display"""
+    venue = meeting.get('venue_name', '')
+    track = meeting.get('track_condition', '')
+    return f"{venue} ({track})" if track else venue
+
+def format_race_name(race: Dict) -> str:
+    """Format race name for display"""
+    number = race.get('number', '')
+    name = race.get('name', '')
+    distance = race.get('distance', '')
+    return f"Race {number} - {name} ({distance}m)" if distance else f"Race {number} - {name}"
+
+def handle_api_request(func, *args, **kwargs):
+    """Generic API request handler with error handling"""
+    try:
+        response = func(*args, **kwargs)
+        if isinstance(response, Dict):
+            if 'error' in response:
+                st.error(f"API Error: {response['error']}")
+                return None
+            return response
+        return None
+    except Exception as e:
+        logger.error(f"API request failed: {str(e)}")
+        st.error(f"Request failed: {str(e)}")
+        return None
+
+def format_date(date_obj: datetime) -> str:
+    """Format date for API requests"""
+    try:
+        if isinstance(date_obj, datetime):
+            return date_obj.strftime("%Y-%m-%d")
+        return date_obj.strftime("%Y-%m-%d")
+    except Exception as e:
+        logger.error(f"Date formatting error: {str(e)}")
+        st.error("Invalid date format")
+        return None
 
 def main():
     st.title("🏇 Racing Analysis Platform")
@@ -66,60 +109,74 @@ def main():
     
     with tabs[0]:
         # Race selection
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         with col1:
             meeting_date = st.date_input(
                 "Meeting Date",
-                value=datetime.now(pytz.timezone('Australia/Sydney')).date()
+                value=datetime.now(pytz.timezone('Australia/Sydney')).date(),
+                min_value=datetime.now(pytz.timezone('Australia/Sydney')).date(),
+                help="Select a date to view race meetings"
             )
         with col2:
             jurisdiction = st.selectbox(
                 "Jurisdiction",
-                ["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"]
-            )
-        with col3:
-            race_type = st.selectbox(
-                "Race Type",
-                [rt.name for rt in RaceType]
+                ["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"],
+                help="Select a racing jurisdiction"
             )
         
         # Fetch and display races
-        try:
-            meetings = st.session_state.client.get_meetings(
-                meeting_date=meeting_date.strftime("%Y-%m-%d"),
-                jurisdiction=jurisdiction
-            )
-            
-            if meetings and 'meetings' in meetings:
-                selected_meeting = st.selectbox(
-                    "Select Meeting",
-                    options=meetings['meetings'],
-                    format_func=lambda x: x['venueName']
+        if meeting_date and jurisdiction:
+            formatted_date = format_date(meeting_date)
+            if formatted_date:
+                meetings_response = handle_api_request(
+                    st.session_state.client.get_meetings,
+                    meeting_date=formatted_date,
+                    jurisdiction=jurisdiction
                 )
                 
-                if selected_meeting:
-                    races = st.session_state.client.get_races_in_meeting(
-                        meeting_date=meeting_date.strftime("%Y-%m-%d"),
-                        race_type=getattr(RaceType, race_type).value,
-                        venue_mnemonic=selected_meeting['venueMnemonic'],
-                        jurisdiction=jurisdiction
-                    )
-                    
-                    if races and 'races' in races:
-                        selected_race = st.selectbox(
-                            "Select Race",
-                            options=races['races'],
-                            format_func=lambda x: f"Race {x['raceNumber']} - {x.get('raceName', '')}"
+                if meetings_response and 'meetings' in meetings_response:
+                    meetings = meetings_response['meetings']
+                    if meetings:
+                        selected_meeting = st.selectbox(
+                            "Select Meeting",
+                            options=meetings,
+                            format_func=format_meeting_name,
+                            help="Select a race meeting"
                         )
                         
-                        if selected_race:
-                            race_info.render_race_overview(selected_race)
+                        if selected_meeting:
+                            races_response = handle_api_request(
+                                st.session_state.client.get_races_in_meeting,
+                                meeting_date=formatted_date,
+                                meeting_id=selected_meeting['id'],
+                                jurisdiction=jurisdiction
+                            )
                             
-                            # Process race for betting opportunities
-                            betting_system.process_race(selected_race)
-                            
-        except Exception as e:
-            st.error(f"Error loading races: {str(e)}")
+                            if races_response and 'races' in races_response:
+                                races = races_response['races']
+                                if races:
+                                    selected_race = st.selectbox(
+                                        "Select Race",
+                                        options=races,
+                                        format_func=format_race_name,
+                                        help="Select a race to analyze"
+                                    )
+                                    
+                                    if selected_race:
+                                        with st.spinner("Loading race details..."):
+                                            race_fields = handle_api_request(
+                                                st.session_state.client.get_race_fields,
+                                                race_id=selected_race['id'],
+                                                include_form=True
+                                            )
+                                            
+                                            if race_fields and not race_fields.get('error'):
+                                                race_info.render_race_overview(race_fields)
+                                                betting_system.process_race(race_fields)
+                                else:
+                                    st.info("No races available for this meeting")
+                    else:
+                        st.info("No meetings available for the selected date and jurisdiction")
     
     with tabs[1]:
         # Automated betting interface

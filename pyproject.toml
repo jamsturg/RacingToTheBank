@@ -4,14 +4,15 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
-    "numpy>=2.1.2",
+    "numpy==1.26.0",
     "openai>=1.52.2",
-    "pandas>=2.2.3",
-    "plotly>=5.24.1",
+    "pandas==2.1.1",
+    "plotly==5.17.0",
     "python-dateutil>=2.9.0.post0",
     "python-dotenv",
+    "pytz==2023.3.post1",
     "reportlab>=4.2.5",
-    "requests>=1.0.1",
+    "requests==2.31.0",
     "scikit-learn>=1.5.2",
     "statsmodels>=0.14.4",
     "streamlit>=1.39.0",
