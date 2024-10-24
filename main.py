@@ -40,16 +40,6 @@ def extract_race_details(race_data) -> Dict:
                     'raceTime': first_runner.get('raceTime', '')
                 }
                 
-        elif isinstance(race_data, list) and race_data:
-            first_runner = race_data[0]
-            race_info = {
-                'distance': first_runner.get('distance', ''),
-                'trackCondition': first_runner.get('trackCondition', ''),
-                'prizeMoney': first_runner.get('prizeMoney', 0),
-                'raceType': first_runner.get('raceType', ''),
-                'raceTime': first_runner.get('raceTime', '')
-            }
-            
         return race_info
     except Exception as e:
         print(f"Error extracting race details: {str(e)}")
@@ -131,12 +121,11 @@ def main():
     )
     
     if st.session_state.show_chat:
-        col1, col2, col3 = st.columns([3, 1, 1])
+        col1, col2, col3 = st.columns([2, 1, 1])
     else:
-        col1, col2 = st.columns([3, 1])
+        col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.subheader("Form Guide")
         race_data = api_client.get_race_data(meeting_id, race_number)
 
         if not race_data:
@@ -171,146 +160,144 @@ def main():
                 prediction_df, left_on='Horse', right_on='horse', how='left'
             )
 
-            # Add export buttons
-            st.markdown("### Export Options")
-            col_export1, col_export2, col_export3, col_export4 = st.columns(4)
-            
-            with col_export1:
-                # Export to CSV
-                csv_data = export_to_csv(form_data)
-                st.download_button(
-                    "Download Form Guide (CSV)",
-                    csv_data,
-                    "form_guide.csv",
-                    "text/csv",
-                    key='download-csv'
-                )
-            
-            with col_export2:
-                # Export to JSON
-                export_data = format_race_data(form_data, predictions, extract_race_details(race_data))
-                json_data = export_to_json(export_data)
-                st.download_button(
-                    "Download Complete Analysis (JSON)",
-                    json_data,
-                    "race_analysis.json",
-                    "application/json",
-                    key='download-json'
-                )
-            
-            with col_export3:
-                # Export to Text Report
-                text_report = export_to_text(export_data)
-                st.download_button(
-                    "Download Analysis Report (TXT)",
-                    text_report,
-                    "race_analysis.txt",
-                    "text/plain",
-                    key='download-txt'
-                )
+            # Export options
+            with st.expander("Export Options", expanded=False):
+                col_export1, col_export2, col_export3, col_export4 = st.columns(4)
                 
-            with col_export4:
-                # Export to PDF
-                pdf_data = export_to_pdf(export_data)
-                if pdf_data:
+                with col_export1:
+                    csv_data = export_to_csv(form_data)
                     st.download_button(
-                        "Download Complete Report (PDF)",
-                        pdf_data,
-                        "race_analysis.pdf",
-                        "application/pdf",
-                        key='download-pdf'
+                        "Download CSV",
+                        csv_data,
+                        "form_guide.csv",
+                        "text/csv",
+                        key='download-csv'
                     )
+                
+                with col_export2:
+                    export_data = format_race_data(form_data, predictions, extract_race_details(race_data))
+                    json_data = export_to_json(export_data)
+                    st.download_button(
+                        "Download JSON",
+                        json_data,
+                        "race_analysis.json",
+                        "application/json",
+                        key='download-json'
+                    )
+                
+                with col_export3:
+                    text_report = export_to_text(export_data)
+                    st.download_button(
+                        "Download TXT",
+                        text_report,
+                        "race_analysis.txt",
+                        "text/plain",
+                        key='download-txt'
+                    )
+                    
+                with col_export4:
+                    pdf_data = export_to_pdf(export_data)
+                    if pdf_data:
+                        st.download_button(
+                            "Download PDF",
+                            pdf_data,
+                            "race_analysis.pdf",
+                            "application/pdf",
+                            key='download-pdf'
+                        )
 
-        render_form_guide(form_data)
-        st.subheader("Speed Map")
-        speed_map = create_speed_map(form_data)
-        st.plotly_chart(speed_map, use_container_width=True)
+            with st.expander("Form Guide", expanded=True):
+                render_form_guide(form_data)
+            
+            with st.expander("Speed Map", expanded=False):
+                st.subheader("Speed Map")
+                speed_map = create_speed_map(form_data)
+                st.plotly_chart(speed_map, use_container_width=True)
 
-        if track_bias:
-            st.subheader("Track Bias Analysis")
-            col_bias1, col_bias2 = st.columns(2)
-            with col_bias1:
-                st.metric("Inside Barrier Advantage", 
-                         f"{track_bias['inside_advantage']:.2f}")
-            with col_bias2:
-                st.metric("Pace Bias", track_bias['pace_bias'])
+            if track_bias:
+                with st.expander("Track Bias Analysis", expanded=False):
+                    col_bias1, col_bias2 = st.columns(2)
+                    with col_bias1:
+                        st.metric("Inside Barrier Advantage", 
+                                f"{track_bias['inside_advantage']:.2f}")
+                    with col_bias2:
+                        st.metric("Pace Bias", track_bias['pace_bias'])
     
     with col2:
-        st.subheader("Race Details")
-        race_info = extract_race_details(race_data)
-        
-        try:
-            distance = race_info.get('distance', '')
-            if isinstance(distance, (int, float)):
-                st.metric("Distance", f"{distance}m")
-            elif isinstance(distance, str) and distance:
-                st.metric("Distance", distance)
-            else:
-                st.metric("Distance", "Not available")
+        with st.expander("Race Details", expanded=True):
+            try:
+                race_info = extract_race_details(race_data)
                 
-            track_condition = race_info.get('trackCondition', '')
-            st.metric("Track Condition", 
-                     track_condition if track_condition else "Not available")
-            
-            prize_money = race_info.get('prizeMoney', 0)
-            if isinstance(prize_money, (int, float)):
-                st.metric("Prize Money", f"${prize_money:,.2f}")
-            else:
-                st.metric("Prize Money", "Not available")
-                
-            race_type = race_info.get('raceType', '')
-            if race_type:
-                st.metric("Race Type", race_type)
-                
-            race_time = race_info.get('raceTime', '')
-            if race_time:
-                st.metric("Race Time", race_time)
-                
-        except Exception as e:
-            st.error(f"Error displaying race details: {str(e)}")
-        
-        st.subheader("AI Predictions")
-        try:
-            if not form_data.empty and 'Horse' in form_data.columns and 'Rating' in form_data.columns:
-                predictions = [
-                    {
-                        'horse': str(row['Horse']),
-                        'score': float(row['Rating']) if pd.notnull(row['Rating']) else 0,
-                        'barrier': str(row['Barrier']) if 'Barrier' in form_data.columns else 'Unknown',
-                        'jockey': str(row['Jockey']) if 'Jockey' in form_data.columns else 'Unknown'
-                    }
-                    for _, row in form_data.nlargest(3, 'Rating').iterrows()
-                ]
-                
-                if predictions:
-                    render_predictions(predictions)
-                    confidence_chart = create_confidence_chart(predictions)
-                    st.plotly_chart(confidence_chart, use_container_width=True)
+                distance = race_info.get('distance', '')
+                if isinstance(distance, (int, float)):
+                    st.metric("Distance", f"{distance}m")
+                elif isinstance(distance, str) and distance:
+                    st.metric("Distance", distance)
                 else:
-                    st.warning("No valid predictions available")
-            else:
-                st.warning("Insufficient data for predictions")
-        except Exception as e:
-            st.error(f"Error generating predictions: {str(e)}")
+                    st.metric("Distance", "Not available")
+                    
+                track_condition = race_info.get('trackCondition', '')
+                st.metric("Track Condition", 
+                         track_condition if track_condition else "Not available")
+                
+                prize_money = race_info.get('prizeMoney', 0)
+                if isinstance(prize_money, (int, float)):
+                    st.metric("Prize Money", f"${prize_money:,.2f}")
+                else:
+                    st.metric("Prize Money", "Not available")
+                    
+                race_type = race_info.get('raceType', '')
+                if race_type:
+                    st.metric("Race Type", race_type)
+                    
+                race_time = race_info.get('raceTime', '')
+                if race_time:
+                    st.metric("Race Time", race_time)
+                    
+            except Exception as e:
+                st.error(f"Error displaying race details: {str(e)}")
+        
+        with st.expander("AI Predictions", expanded=True):
+            try:
+                if not form_data.empty and 'Horse' in form_data.columns and 'Rating' in form_data.columns:
+                    predictions = [
+                        {
+                            'horse': str(row['Horse']),
+                            'score': float(row['Rating']) if pd.notnull(row['Rating']) else 0,
+                            'barrier': str(row['Barrier']) if 'Barrier' in form_data.columns else 'Unknown',
+                            'jockey': str(row['Jockey']) if 'Jockey' in form_data.columns else 'Unknown'
+                        }
+                        for _, row in form_data.nlargest(3, 'Rating').iterrows()
+                    ]
+                    
+                    if predictions:
+                        render_predictions(predictions)
+                        confidence_chart = create_confidence_chart(predictions)
+                        st.plotly_chart(confidence_chart, use_container_width=True)
+                    else:
+                        st.warning("No valid predictions available")
+                else:
+                    st.warning("Insufficient data for predictions")
+            except Exception as e:
+                st.error(f"Error generating predictions: {str(e)}")
     
     if st.session_state.show_chat:
         with col3:
-            st.subheader("Race Assistant")
-            
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-            
-            if prompt := st.chat_input("Ask about the race..."):
-                st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.expander("Race Assistant", expanded=True):
+                for message in st.session_state.messages:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
                 
-                race_context = f"Race at {selected_meeting.split(' - ')[0]}, Race {race_number}. "
-                if not form_data.empty:
-                    top_horses = form_data.nlargest(3, 'Rating')['Horse'].tolist()
-                    race_context += f"Top 3 rated horses: {', '.join(top_horses)}"
-                
-                response = get_ai_response(prompt, race_context)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                if prompt := st.chat_input("Ask about the race..."):
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    
+                    race_context = f"Race at {selected_meeting.split(' - ')[0]}, Race {race_number}. "
+                    if not form_data.empty:
+                        top_horses = form_data.nlargest(3, 'Rating')['Horse'].tolist()
+                        race_context += f"Top 3 rated horses: {', '.join(top_horses)}"
+                    
+                    response = get_ai_response(prompt, race_context)
+                    st.session_state.messages.append({"role": "assistant", "content": response})
     
     if st.sidebar.button("Refresh Data"):
         st.rerun()
