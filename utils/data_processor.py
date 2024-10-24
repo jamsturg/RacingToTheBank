@@ -13,8 +13,93 @@ class RaceDataProcessor:
             'track_condition': 0.10
         }
 
+    def analyze_historical_performance(self, runner: Dict) -> Dict:
+        try:
+            # Extract performance history
+            history = runner.get('performanceHistory', [])
+            if not history:
+                return {
+                    'win_rate': 0,
+                    'place_rate': 0,
+                    'avg_position': 0,
+                    'trend': 'Unknown',
+                    'best_distance': 'Unknown',
+                    'preferred_condition': 'Unknown'
+                }
+                
+            # Calculate performance metrics
+            total_runs = len(history)
+            wins = sum(1 for run in history if run.get('position', 0) == 1)
+            places = sum(1 for run in history if 1 <= run.get('position', 0) <= 3)
+            positions = [run.get('position', 0) for run in history]
+            
+            # Calculate distance performance
+            distance_performance = {}
+            for run in history:
+                dist = run.get('distance', 0)
+                if dist:
+                    if dist not in distance_performance:
+                        distance_performance[dist] = {'runs': 0, 'wins': 0}
+                    distance_performance[dist]['runs'] += 1
+                    if run.get('position', 0) == 1:
+                        distance_performance[dist]['wins'] += 1
+            
+            # Find best distance
+            best_distance = max(
+                distance_performance.items(),
+                key=lambda x: x[1]['wins']/x[1]['runs'] if x[1]['runs'] > 0 else 0,
+                default=(0, {'runs': 0, 'wins': 0})
+            )
+            
+            # Analyze track condition performance
+            condition_performance = {}
+            for run in history:
+                condition = run.get('trackCondition', 'Unknown')
+                if condition not in condition_performance:
+                    condition_performance[condition] = {'runs': 0, 'wins': 0}
+                condition_performance[condition]['runs'] += 1
+                if run.get('position', 0) == 1:
+                    condition_performance[condition]['wins'] += 1
+                    
+            # Find preferred condition
+            preferred_condition = max(
+                condition_performance.items(),
+                key=lambda x: x[1]['wins']/x[1]['runs'] if x[1]['runs'] > 0 else 0,
+                default=('Unknown', {'runs': 0, 'wins': 0})
+            )
+            
+            # Calculate trend based on last 5 runs
+            recent_positions = positions[-5:]
+            trend = 'Stable'
+            if len(recent_positions) >= 3:
+                if all(x <= y for x, y in zip(recent_positions, recent_positions[1:])):
+                    trend = 'Declining'
+                elif all(x >= y for x, y in zip(recent_positions, recent_positions[1:])):
+                    trend = 'Improving'
+            
+            return {
+                'win_rate': round(wins/total_runs * 100, 2) if total_runs > 0 else 0,
+                'place_rate': round(places/total_runs * 100, 2) if total_runs > 0 else 0,
+                'avg_position': round(sum(positions)/len(positions), 2) if positions else 0,
+                'trend': trend,
+                'best_distance': f"{best_distance[0]}m" if best_distance[0] else 'Unknown',
+                'preferred_condition': preferred_condition[0]
+            }
+            
+        except Exception as e:
+            print(f"Error analyzing historical performance: {str(e)}")
+            return {
+                'win_rate': 0,
+                'place_rate': 0,
+                'avg_position': 0,
+                'trend': 'Error',
+                'best_distance': 'Unknown',
+                'preferred_condition': 'Unknown'
+            }
+
     def _validate_form_data(self, form_data: pd.DataFrame) -> pd.DataFrame:
-        required_columns = ['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating']
+        required_columns = ['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating', 
+                          'win_rate', 'place_rate', 'avg_position', 'trend', 'best_distance', 'preferred_condition']
         
         # Check for missing columns
         missing_columns = set(required_columns) - set(form_data.columns)
@@ -68,6 +153,11 @@ class RaceDataProcessor:
                         'Form': self._extract_form(runner),
                         'Rating': float(self.calculate_rating(runner))
                     }
+                    
+                    # Add historical performance
+                    historical_data = self.analyze_historical_performance(runner)
+                    horse_data.update(historical_data)
+                    
                     processed_data.append(horse_data)
                 except Exception as e:
                     print(f"Error processing runner: {str(e)}")
@@ -78,14 +168,16 @@ class RaceDataProcessor:
                 form_data = self._validate_form_data(form_data)
             else:
                 # Return empty DataFrame with correct structure
-                form_data = pd.DataFrame(columns=['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating'])
+                form_data = pd.DataFrame(columns=['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating',
+                                                'win_rate', 'place_rate', 'avg_position', 'trend', 'best_distance', 'preferred_condition'])
             
             return form_data
             
         except Exception as e:
             print(f"Error in prepare_form_guide: {str(e)}")
             # Return empty DataFrame with correct structure
-            return pd.DataFrame(columns=['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating'])
+            return pd.DataFrame(columns=['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating',
+                                      'win_rate', 'place_rate', 'avg_position', 'trend', 'best_distance', 'preferred_condition'])
 
     def _extract_weight(self, runner: Dict) -> float:
         """Safely extract weight from runner data"""

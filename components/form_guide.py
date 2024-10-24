@@ -7,6 +7,24 @@ def render_form_guide(form_data: pd.DataFrame):
         st.warning("No form guide data available for this race.")
         return
         
+    # Add historical performance metrics
+    st.subheader("Historical Performance")
+    for _, row in form_data.iterrows():
+        with st.expander(f"{row['Horse']} - Historical Analysis"):
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Win Rate", f"{row.get('win_rate', 0)}%")
+                st.metric("Best Distance", row.get('best_distance', 'Unknown'))
+                
+            with col2:
+                st.metric("Place Rate", f"{row.get('place_rate', 0)}%")
+                st.metric("Current Trend", row.get('trend', 'Unknown'))
+                
+            with col3:
+                st.metric("Avg Position", row.get('avg_position', 0))
+                st.metric("Preferred Track", row.get('preferred_condition', 'Unknown'))
+        
     # Filter columns to display
     display_columns = [
         'Number',
@@ -53,6 +71,7 @@ def render_form_guide(form_data: pd.DataFrame):
             st.error(f"Error styling data: {str(e)}")
             return df
     
+    st.subheader("Form Guide")
     st.dataframe(
         style_dataframe(sorted_data),
         height=400,
