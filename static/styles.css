@@ -1,25 +1,218 @@
+/* Base styles */
 .stApp {
     max-width: 1200px;
     margin: 0 auto;
+    font-family: 'Inter', sans-serif;
+    background-color: #f8f9fa;
 }
 
+/* Header styles */
+.stMarkdown h1 {
+    padding: 1.5rem;
+    background: linear-gradient(90deg, #FF4B4B 0%, #FF6B6B 100%);
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-weight: 600;
+}
+
+/* Sidebar styles */
+.css-1d391kg {
+    background-color: white;
+    border-right: 1px solid #e6e6e6;
+    padding: 2rem 1rem;
+}
+
+.css-1d391kg .stSelectbox label,
+.css-1d391kg .stNumberInput label {
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+/* Card styles */
 .race-card {
-    padding: 1rem;
-    border-radius: 0.5rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
     border: 1px solid #e6e6e6;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease;
 }
 
-.prediction-table {
-    font-size: 0.9rem;
+.race-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
+/* Table styles */
+.stDataFrame {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid #e6e6e6;
+    margin: 1rem 0;
+}
+
+.dataframe {
+    font-size: 0.95rem;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.dataframe th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    text-align: left;
+    padding: 12px;
+    border-bottom: 2px solid #dee2e6;
+    color: #1f2937;
+}
+
+.dataframe td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Metric styles */
+.stMetric {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid #e6e6e6;
+    margin: 0.5rem 0;
+    transition: transform 0.2s ease;
+}
+
+.stMetric:hover {
+    transform: translateY(-2px);
+}
+
+.stMetric label {
+    font-weight: 500;
+    color: #1f2937;
+}
+
+/* Button styles */
+.stButton > button {
+    width: 100%;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    background: #FF4B4B;
+    color: white;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    background: #FF6B6B;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Expandable section styles */
+.streamlit-expanderHeader {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e6e6e6;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.streamlit-expanderContent {
+    background: white;
+    border-radius: 0 0 8px 8px;
+    border: 1px solid #e6e6e6;
+    border-top: none;
+    padding: 1rem;
+}
+
+/* Filter section styles */
+.filter-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e6e6e6;
+}
+
+.stSlider label, 
+.stSelectbox label,
+.stMultiselect label {
+    font-weight: 500;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+/* Export button styles */
+.export-buttons {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.export-button {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    background: #FF4B4B;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    text-align: center;
+    flex: 1;
+}
+
+.export-button:hover {
+    background: #FF6B6B;
+    transform: translateY(-1px);
+}
+
+/* Speed map styles */
 .speed-map {
+    background: white;
     border: 1px solid #e6e6e6;
-    border-radius: 0.5rem;
-    padding: 1rem;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.highlight-row {
-    background-color: rgba(255, 75, 75, 0.1);
+/* Chat interface styles */
+.chat-message {
+    padding: 1rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.user-message {
+    background: #e9ecef;
+}
+
+/* Responsive design */
+@media screen and (max-width: 768px) {
+    .stApp {
+        padding: 1rem;
+    }
+    
+    .race-card {
+        padding: 1rem;
+    }
+    
+    .dataframe {
+        font-size: 0.85rem;
+    }
+    
+    .export-buttons {
+        flex-direction: column;
+    }
 }
