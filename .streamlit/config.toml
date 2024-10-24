@@ -2,6 +2,8 @@
 headless = true
 address = "0.0.0.0"
 port = 5000
+enableCORS = true
+enableXsrfProtection = false
 
 [theme]
 primaryColor = "#1E88E5"  # Professional blue
@@ -9,3 +11,7 @@ backgroundColor = "#FFFFFF"  # Clean white
 secondaryBackgroundColor = "#F8F9FA"  # Light gray-white
 textColor = "#212529"  # Dark text
 font = "sans serif"
+
+[global]
+developmentMode = false
+showWarningOnDirectExecution = false

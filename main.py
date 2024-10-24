@@ -1,202 +1,138 @@
 import streamlit as st
 from datetime import datetime
 import time
-import json
 from utils.alerts import create_alert_system
 from utils.api_client import RacingAPIClient
 from utils.data_processor import RaceDataProcessor
-from utils.statistical_predictor import StatisticalPredictor
-from utils.export_utils import format_race_data, export_to_csv, export_to_json, export_to_text, export_to_pdf
-from components.form_guide import render_form_guide
+from components.form_guide import render_form_guide, render_filter_panel
 from components.speed_map import create_speed_map
 from components.track_bias import create_track_bias_chart
-from components.predictions import render_predictions, create_confidence_chart
-from typing import Dict
+from components.chat_assistant import render_chat_assistant
 
 def main():
+    # Initialize form_data and session state
+    form_data = None
+    
     st.set_page_config(
         page_title="To The Bank - Racing Analysis",
         page_icon="🏇",
         layout="wide"
     )
 
-    # Initialize alert system at the start
+    # Initialize session state
     if 'alert_system' not in st.session_state:
         st.session_state.alert_system = create_alert_system()
-    alert_system = st.session_state.alert_system
-
-    # Initialize session state variables
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
+    if 'filters' not in st.session_state:
+        st.session_state.filters = {}
     if 'show_chat' not in st.session_state:
         st.session_state.show_chat = False
-    if 'previous_odds' not in st.session_state:
-        st.session_state.previous_odds = {}
-    if 'last_alert_time' not in st.session_state:
-        st.session_state.last_alert_time = {}
+
+    # Left Sidebar Navigation
+    st.sidebar.markdown("### Quick Navigation")
+    st.sidebar.markdown("---")
+
+    # Initialize API client and fetch meetings
+    api_client = RacingAPIClient()
+    with st.sidebar:
+        with st.spinner("Loading meetings..."):
+            try:
+                meetings = api_client.get_meetings()
+                if meetings:
+                    # Create meeting options with proper error handling
+                    meeting_options = []
+                    for meeting in meetings:
+                        if isinstance(meeting, dict):
+                            track_name = meeting.get('track', {}).get('name', '')
+                            meeting_id = meeting.get('meetingId', '')
+                            if track_name and meeting_id:
+                                meeting_options.append(f"{track_name}: {meeting_id}")
+                    
+                    if meeting_options:
+                        selected_meeting = st.selectbox(
+                            "Select Meeting",
+                            meeting_options
+                        )
+                    else:
+                        st.error("No valid meetings found")
+                        selected_meeting = None
+                else:
+                    st.error("No meetings available")
+                    selected_meeting = None
+            except Exception as e:
+                st.error(f"Error loading meetings: {str(e)}")
+                selected_meeting = None
+
+        race_number = st.number_input("Race Number", min_value=1, max_value=12, value=1)
+        auto_refresh = st.checkbox("Auto Refresh", value=False)
+        
+        # Chat Assistant Toggle
+        st.markdown("---")
+        chat_toggle = st.checkbox("Show Chat Assistant", value=st.session_state.show_chat)
 
     # Main header
     st.markdown('''
-        <div class="header">
-            <h1 style="margin:0; font-size: 2.5rem;">To The Bank</h1>
-            <p style="margin:0; opacity:0.9;">Racing Analysis Platform</p>
+        <div style="text-align: center; padding: 1rem; background: linear-gradient(90deg, #1E88E5 0%, #64B5F6 100%); 
+                    color: white; border-radius: 10px; margin-bottom: 1rem;">
+            <h1 style="margin:0;">To The Bank</h1>
+            <p style="margin:0.5rem 0 0 0;">Racing Analysis Platform</p>
         </div>
     ''', unsafe_allow_html=True)
 
-    # Sidebar setup
-    with st.sidebar:
-        st.markdown('''
-            <div style="padding: 1rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <h3 style="color: #1E88E5; margin-bottom: 1rem;">Race Selection</h3>
-            </div>
-        ''', unsafe_allow_html=True)
-        
-        today = datetime.now().strftime("%Y-%m-%d")
-        api_client = RacingAPIClient()
-        data_processor = RaceDataProcessor()
-        
-        meetings = api_client.get_meetings(today)
-        if not meetings:
-            st.error("No meetings available for today")
-            return
+    # Main Content Area
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
 
-        meeting_options = {
-            f"{meeting.get('track', {}).get('name', 'Unknown Track')} - {meeting.get('meetingId')}": meeting.get('meetingId')
-            for meeting in meetings if isinstance(meeting, dict) and meeting.get('meetingId')
-        }
-
-        if not meeting_options:
-            st.error("No valid meetings found")
-            return
-        
-        selected_meeting = st.selectbox(
-            "Select Meeting",
-            options=list(meeting_options.keys())
-        )
-        meeting_id = meeting_options[selected_meeting]
-        
-        race_number = st.number_input(
-            "Race Number",
-            min_value=1,
-            max_value=12,
-            value=1
-        )
-
-        # Auto-refresh toggle
-        auto_refresh = st.checkbox("Enable Auto-refresh", value=False)
-        if auto_refresh:
-            st.info("Auto-refreshing every 30 seconds")
-            time.sleep(30)
-            st.rerun()
-
-    # Create main columns for layout
-    main_col1, main_col2 = st.columns([7, 3])
-
-    with main_col1:
-        race_data = api_client.get_race_data(meeting_id, race_number)
-        if not race_data:
-            st.error("Unable to fetch race data")
-            return
-
-        form_data = data_processor.prepare_form_guide(race_data)
-
-        # Add real-time alerts section
-        with st.container():
-            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
-            st.subheader("🔔 Race Alerts")
-            
-            # Check for odds changes with error handling
-            current_odds = {}
+    # Form Guide (Centerpiece)
+    if selected_meeting and selected_meeting != "No meetings available":
+        with st.spinner("Loading race data..."):
             try:
-                for _, horse in form_data.iterrows():
-                    if 'fixed_odds' in horse:
-                        current_odds[horse['Horse']] = float(horse['fixed_odds'])
+                data_processor = RaceDataProcessor()
+                meeting_id = selected_meeting.split(":")[1].strip()
+                race_data = api_client.get_race_data(meeting_id, race_number)
+                
+                if race_data:
+                    form_data = data_processor.prepare_form_guide(race_data)
+                    if not form_data.empty:
+                        render_form_guide(form_data)
+                    else:
+                        st.warning("No form guide data available for this race")
+                else:
+                    st.error("Unable to fetch race data")
             except Exception as e:
-                print(f"Error processing odds: {str(e)}")
-            
-            # Monitor odds changes with cooldown
-            current_time = datetime.now()
-            for horse, current in current_odds.items():
-                if horse in st.session_state.previous_odds:
-                    prev = st.session_state.previous_odds[horse]
-                    if abs(current - prev) >= 2.0:
-                        last_alert = st.session_state.last_alert_time.get(horse, datetime.min)
-                        if (current_time - last_alert).total_seconds() > 300:  # 5-minute cooldown
-                            direction = "shortened" if current < prev else "drifted"
-                            alert_system.add_alert(
-                                "odds",
-                                f"{horse} has {direction} from {prev:.1f} to {current:.1f}",
-                                "info"
-                            )
-                            st.session_state.last_alert_time[horse] = current_time
-            
-            # Update previous odds
-            st.session_state.previous_odds = current_odds
-            
-            # Add time-based alerts
-            race_time = race_data.get('startTime')
-            if race_time:
-                try:
-                    race_time = datetime.strptime(race_time, "%Y-%m-%d %H:%M:%S")
-                    alerts = alert_system.check_time_alerts(race_time)
-                    for alert in alerts:
-                        alert_system.add_alert(
-                            alert['type'],
-                            alert['message'],
-                            alert['severity']
-                        )
-                except Exception as e:
-                    st.warning(f"Unable to process race time alerts: {str(e)}")
-            
-            # Check race status alerts
-            status_alerts = alert_system.check_race_status(race_data)
-            for alert in status_alerts:
-                alert_system.add_alert(
-                    alert['type'],
-                    alert['message'],
-                    alert['severity']
-                )
-            
-            # Render alerts
-            alert_system.render_alerts()
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.error(f"Error processing race data: {str(e)}")
+    else:
+        st.info("Please select a meeting to view the form guide")
 
-        # Form Guide Section
-        with st.container():
-            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
-            st.subheader("🏇 Race Form Guide")
-            render_form_guide(form_data)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Speed Map Section
-        with st.container():
-            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
-            st.subheader("🗺️ Speed Map")
+    # Collapsible Sections
+    if form_data is not None and not form_data.empty:
+        with st.expander("Speed Map", expanded=False):
             speed_map = create_speed_map(form_data)
             st.plotly_chart(speed_map, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
 
-    with main_col2:
-        # Track Bias Section
-        with st.container():
-            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
-            st.subheader("🎯 Track Bias Analysis")
-            track_bias = {
-                'barrier_bias': {},
-                'style_bias': {},
-                'inside_advantage': 0.0,
-                'pace_bias': 'Neutral'
-            }
-            track_bias_chart = create_track_bias_chart(track_bias)
+        with st.expander("Track Bias Analysis", expanded=False):
+            track_bias_chart = create_track_bias_chart({})
             st.plotly_chart(track_bias_chart, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown(
-        '<p style="text-align: center; color: #666;">Data provided by PuntingForm API. '
-        'Predictions are for entertainment purposes only.</p>',
-        unsafe_allow_html=True
-    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Chat Assistant
+    if chat_toggle:
+        st.session_state.show_chat = True
+        with st.sidebar:
+            st.markdown("### Chat Assistant")
+            st.text_input("Ask about race analysis:", key="chat_input")
+            if st.button("Send"):
+                if st.session_state.chat_input:
+                    st.write(f"You: {st.session_state.chat_input}")
+    else:
+        st.session_state.show_chat = False
+
+    # Render Filter Panel
+    render_filter_panel()
+
+    # Auto-refresh
+    if auto_refresh:
+        time.sleep(30)
+        st.rerun()
 
 if __name__ == "__main__":
     main()

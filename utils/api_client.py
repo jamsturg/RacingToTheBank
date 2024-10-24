@@ -14,7 +14,6 @@ class RacingAPIClient:
         self.logger = logging.getLogger(__name__)
 
     def get_meetings(self, date: str = None) -> List[Dict]:
-        """Get all racing meetings for a date"""
         try:
             url = f"{self.base_url}/meetingslist"
             params = {
@@ -22,7 +21,12 @@ class RacingAPIClient:
                 'apiKey': self.api_key
             }
             response = requests.get(url, params=params)
-            return response.json().get('payLoad', []) if response.status_code == 200 else []
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('payLoad', [])
+            else:
+                self.logger.error(f"Error fetching meetings: {response.status_code}")
+                return []
         except Exception as e:
             self.logger.error(f"Error fetching meetings: {str(e)}")
             return []
