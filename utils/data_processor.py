@@ -13,42 +13,52 @@ class RaceDataProcessor:
             'track_condition': 0.10
         }
 
-    def prepare_form_guide(self, race_data) -> pd.DataFrame:
-        """Process race data and return a properly formatted DataFrame"""
-        # Define column dtypes
-        dtypes = {
-            'Number': 'str',
-            'Horse': 'str',
-            'Barrier': 'str',
-            'Weight': 'float64',
-            'Jockey': 'str',
-            'Form': 'str',
-            'Rating': 'float64'
-        }
+    def _validate_form_data(self, form_data: pd.DataFrame) -> pd.DataFrame:
+        required_columns = ['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating']
         
+        # Check for missing columns
+        missing_columns = set(required_columns) - set(form_data.columns)
+        if missing_columns:
+            # Add missing columns with default values
+            for col in missing_columns:
+                form_data[col] = ''
+        
+        # Ensure correct data types
+        try:
+            form_data['Number'] = form_data['Number'].astype(str)
+            form_data['Horse'] = form_data['Horse'].astype(str)
+            form_data['Barrier'] = form_data['Barrier'].astype(str)
+            form_data['Weight'] = pd.to_numeric(form_data['Weight'], errors='coerce').fillna(0)
+            form_data['Jockey'] = form_data['Jockey'].astype(str)
+            form_data['Form'] = form_data['Form'].astype(str)
+            form_data['Rating'] = pd.to_numeric(form_data['Rating'], errors='coerce').fillna(0)
+        except Exception as e:
+            print(f"Error converting data types: {str(e)}")
+        
+        # Reorder columns to match required order
+        return form_data[required_columns]
+
+    def prepare_form_guide(self, race_data) -> pd.DataFrame:
         try:
             # Extract runners based on data structure
             runners = []
-            if isinstance(race_data, dict):
-                if 'payLoad' in race_data:
-                    payload = race_data['payLoad']
-                    if isinstance(payload, dict) and 'runners' in payload:
-                        runners = payload['runners']
-                    else:
-                        runners = [payload] if isinstance(payload, dict) else payload
-                elif 'runners' in race_data:
-                    runners = race_data['runners']
+            if isinstance(race_data, dict) and 'payLoad' in race_data:
+                payload = race_data['payLoad']
+                if isinstance(payload, dict) and 'runners' in payload:
+                    runners = payload['runners']
+                elif isinstance(payload, list):
+                    runners = payload
             elif isinstance(race_data, list):
                 runners = race_data
-            
+                
             # Process each runner
-            form_data = []
+            processed_data = []
             for runner in runners:
                 if not isinstance(runner, dict):
                     continue
-                
+                    
                 try:
-                    # Extract and convert data with proper type handling
+                    # Extract data with proper error handling
                     horse_data = {
                         'Number': str(runner.get('number', '')),
                         'Horse': str(runner.get('name', '')),
@@ -58,31 +68,24 @@ class RaceDataProcessor:
                         'Form': self._extract_form(runner),
                         'Rating': float(self.calculate_rating(runner))
                     }
-                    
-                    # Only add valid entries
-                    if horse_data['Horse'] and horse_data['Number']:
-                        form_data.append(horse_data)
+                    processed_data.append(horse_data)
                 except Exception as e:
                     print(f"Error processing runner: {str(e)}")
                     continue
             
-            # Create DataFrame with specified dtypes
-            df = pd.DataFrame(form_data)
+            if processed_data:
+                form_data = pd.DataFrame(processed_data)
+                form_data = self._validate_form_data(form_data)
+            else:
+                # Return empty DataFrame with correct structure
+                form_data = pd.DataFrame(columns=['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating'])
             
-            # Ensure all required columns exist with correct types
-            for col, dtype in dtypes.items():
-                if col not in df.columns:
-                    df[col] = pd.Series(dtype=dtype)
-                else:
-                    df[col] = df[col].astype(dtype)
-            
-            # Reorder columns to match expected format
-            return df[list(dtypes.keys())]
+            return form_data
             
         except Exception as e:
-            print(f"Error processing race data: {str(e)}")
+            print(f"Error in prepare_form_guide: {str(e)}")
             # Return empty DataFrame with correct structure
-            return pd.DataFrame({col: pd.Series(dtype=dtype) for col, dtype in dtypes.items()})
+            return pd.DataFrame(columns=['Number', 'Horse', 'Barrier', 'Weight', 'Jockey', 'Form', 'Rating'])
 
     def _extract_weight(self, runner: Dict) -> float:
         """Safely extract weight from runner data"""
@@ -99,14 +102,14 @@ class RaceDataProcessor:
         """Safely extract jockey name from runner data"""
         jockey = runner.get('jockey', {})
         if isinstance(jockey, dict):
-            return str(jockey.get('fullName', jockey.get('name', '')))
+            return jockey.get('fullName', jockey.get('name', ''))
         return str(jockey) if jockey else ''
 
     def _extract_form(self, runner: Dict) -> str:
         """Safely extract form data from runner"""
         form = runner.get('form', runner.get('last5Runs', ''))
         if isinstance(form, dict):
-            return str(form.get('last5Runs', form.get('lastFive', '')))
+            return form.get('last5Runs', form.get('lastFive', ''))
         return str(form) if form else ''
 
     def calculate_rating(self, runner: Dict) -> float:
