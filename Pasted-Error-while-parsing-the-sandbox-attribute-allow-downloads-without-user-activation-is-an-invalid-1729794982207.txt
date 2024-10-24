@@ -1,0 +1,76 @@
+Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this errorAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'ambient-light-sensor'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'battery'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'execution-while-not-rendered'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'layout-animations'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'legacy-image-formats'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'navigation-override'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'oversized-images'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'publickey-credentials'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'speaker-selection'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'unoptimized-images'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Unrecognized feature: 'unsized-media'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Allow attribute will take precedence over 'allowfullscreen'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+framework-facff042523b88ee.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
+_ @ framework-facff042523b88ee.js:1Understand this warningAI
+59WARNING: Too many active WebGL contexts. Oldest context will be lost.Understand this warningAI
+31_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+_app-a20532c2c9d4bdad.js:16 webglcontextrestored event received
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+336WebGL: INVALID_OPERATION: delete: object does not belong to this contextUnderstand this warningAI
+6_app-a20532c2c9d4bdad.js:16 webglcontextrestored event received
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+9_app-a20532c2c9d4bdad.js:16 webgl context not restored; firing onContextLoss
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+_app-a20532c2c9d4bdad.js:16 task queue exceeded allotted deadline by 104ms
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+15_app-a20532c2c9d4bdad.js:16 webgl context not restored; firing onContextLoss
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+_app-a20532c2c9d4bdad.js:16 webgl context not restored; firing onContextLoss
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+_app-a20532c2c9d4bdad.js:16 webglcontextrestored event received
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+4_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+2_app-a20532c2c9d4bdad.js:16 webglcontextrestored event received
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+2_app-a20532c2c9d4bdad.js:16 webgl context not restored; firing onContextLoss
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+2_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+2_app-a20532c2c9d4bdad.js:16 webgl context not restored; firing onContextLoss
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+_app-a20532c2c9d4bdad.js:16 webgl context not restored; firing onContextLoss
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+_app-a20532c2c9d4bdad.js:16 webglcontextrestored event received
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+2_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+2_app-a20532c2c9d4bdad.js:16 webglcontextrestored event received
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+framework-facff042523b88ee.js:1 Unable to preventDefault inside passive event listener invocation.
+preventDefault @ framework-facff042523b88ee.js:1Understand this errorAI
+framework-facff042523b88ee.js:1 Unable to preventDefault inside passive event listener invocation.
+preventDefault @ framework-facff042523b88ee.js:1Understand this errorAI
+framework-facff042523b88ee.js:1 Unable to preventDefault inside passive event listener invocation.
+preventDefault @ framework-facff042523b88ee.js:1Understand this errorAI
+4_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+4_app-a20532c2c9d4bdad.js:16 webgl context not restored; firing onContextLoss
+(anonymous) @ _app-a20532c2c9d4bdad.js:16Understand this warningAI
+_app-a20532c2c9d4bdad.js:16 webglcontextlost event received
+_app-a20532c2c9d4bdad.js:16 webglcontextrestored event received

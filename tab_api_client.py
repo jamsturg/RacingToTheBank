@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Union
 from datetime import datetime
 import requests
 import logging
+import json
 from dataclasses import dataclass
 from enum import Enum
 import os
@@ -27,9 +28,7 @@ class APIError(Exception):
     pass
 
 class TABApiClient:
-    """
-    Complete TAB API Client implementing all available endpoints
-    """
+    """TAB API Client implementing all available endpoints"""
     
     def __init__(self, bearer_token: Optional[str] = None):
         self.base_url = "https://api.beta.tab.com.au"
@@ -39,8 +38,28 @@ class TABApiClient:
             
         self.session = requests.Session()
         self.session.headers.update({
-            "Authorization": f"Bearer {self.bearer_token}"
+            "Authorization": f"Bearer {self.bearer_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
         })
+
+    def _validate_response(self, response: requests.Response) -> Dict:
+        """Validate API response and handle common errors"""
+        try:
+            if not response.content:
+                raise APIError("Empty response received from server")
+                
+            data = response.json()
+            
+            if not isinstance(data, (dict, list)):
+                raise APIError("Invalid response format")
+                
+            return data
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse response: {str(e)}")
+            logger.error(f"Response content: {response.content}")
+            raise APIError(f"Invalid JSON response: {str(e)}")
 
     def _make_request(
         self,
@@ -48,76 +67,75 @@ class TABApiClient:
         endpoint: str,
         params: Optional[Dict] = None,
         data: Optional[Dict] = None,
-        headers: Optional[Dict] = None
+        headers: Optional[Dict] = None,
+        max_retries: int = 3
     ) -> Dict:
-        """Make API request with error handling"""
-        try:
-            url = f"{self.base_url}{endpoint}"
-            response = self.session.request(
-                method=method,
-                url=url,
-                params=params,
-                json=data,
-                headers=headers
-            )
-            
-            logger.debug(f"Request: {method} {url}")
-            logger.debug(f"Params: {params}")
-            logger.debug(f"Response status: {response.status_code}")
-            
-            response.raise_for_status()
-            return response.json()
-            
-        except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP error occurred: {str(e)}")
-            if response.status_code == 401:
-                raise APIError("Authentication failed. Check your bearer token.")
-            elif response.status_code == 403:
-                raise APIError("Insufficient permissions for this request.")
-            elif response.status_code == 429:
-                raise APIError("Rate limit exceeded. Please wait before retrying.")
-            raise APIError(f"HTTP error occurred: {str(e)}")
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request failed: {str(e)}")
-            raise APIError(f"Request failed: {str(e)}")
-
-    # Racing Endpoints
-    
-    def get_meeting_dates(self, jurisdiction: str) -> Dict:
-        """
-        Get all available meeting dates
+        """Make API request with error handling and retries"""
+        url = f"{self.base_url}{endpoint}"
+        retry_count = 0
+        last_error = None
         
-        Args:
-            jurisdiction: State jurisdiction (e.g., 'NSW', 'VIC')
+        while retry_count < max_retries:
+            try:
+                logger.debug(f"Request: {method} {url}")
+                logger.debug(f"Params: {params}")
+                
+                response = self.session.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=data,
+                    headers=headers,
+                    timeout=30  # Add timeout
+                )
+                
+                logger.debug(f"Response status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    return self._validate_response(response)
+                elif response.status_code == 401:
+                    raise APIError("Authentication failed. Check your bearer token.")
+                elif response.status_code == 403:
+                    raise APIError("Insufficient permissions for this request.")
+                elif response.status_code == 429:
+                    if retry_count < max_retries - 1:
+                        retry_count += 1
+                        continue
+                    raise APIError("Rate limit exceeded. Please wait before retrying.")
+                else:
+                    response.raise_for_status()
+                    
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                if retry_count < max_retries - 1:
+                    retry_count += 1
+                    continue
+                logger.error(f"Request failed: {str(e)}")
+                raise APIError(f"Request failed: {str(e)}")
+                
+            retry_count += 1
             
-        Returns:
-            Dict containing available dates and their details
-        """
-        return self._make_request(
-            "GET",
-            "/v1/tab-info-service/racing/dates",
-            params={"jurisdiction": jurisdiction}
-        )
+        if last_error:
+            raise APIError(f"Request failed after {max_retries} retries: {str(last_error)}")
+
+    def format_date(self, date_str: str) -> str:
+        """Format date string to API expected format"""
+        try:
+            date = datetime.strptime(date_str, "%Y-%m-%d")
+            return date.strftime("%Y-%m-%d")
+        except ValueError:
+            raise ValueError("Invalid date format. Use YYYY-MM-DD")
 
     def get_meetings(
         self,
         meeting_date: str,
         jurisdiction: str
     ) -> Dict:
-        """
-        Get meetings for a specific date
-        
-        Args:
-            meeting_date: Date in YYYY-MM-DD format
-            jurisdiction: State jurisdiction
-            
-        Returns:
-            Dict containing meeting details
-        """
+        """Get meetings for a specific date"""
+        formatted_date = self.format_date(meeting_date)
         return self._make_request(
             "GET",
-            f"/v1/tab-info-service/racing/dates/{meeting_date}/meetings",
+            f"/v1/tab-info-service/racing/dates/{formatted_date}/meetings",
             params={"jurisdiction": jurisdiction}
         )
 
@@ -128,24 +146,14 @@ class TABApiClient:
         venue_mnemonic: str,
         jurisdiction: str
     ) -> Dict:
-        """
-        Get all races in a meeting
-        
-        Args:
-            meeting_date: Date in YYYY-MM-DD format
-            race_type: RaceType enum or string ('R', 'H', 'G')
-            venue_mnemonic: Three-letter venue code
-            jurisdiction: State jurisdiction
-            
-        Returns:
-            Dict containing race details
-        """
+        """Get all races in a meeting"""
+        formatted_date = self.format_date(meeting_date)
         if isinstance(race_type, RaceType):
             race_type = race_type.value
             
         return self._make_request(
             "GET",
-            f"/v1/tab-info-service/racing/dates/{meeting_date}/meetings/{race_type}/{venue_mnemonic}/races",
+            f"/v1/tab-info-service/racing/dates/{formatted_date}/meetings/{race_type}/{venue_mnemonic}/races",
             params={"jurisdiction": jurisdiction}
         )
 
@@ -153,28 +161,12 @@ class TABApiClient:
         self,
         jurisdiction: str,
         max_races: Optional[int] = None,
-        include_recently_closed: bool = False,
-        wagering_product: Optional[str] = None,
         include_fixed_odds: bool = False
     ) -> Dict:
-        """
-        Get next races to start
-        
-        Args:
-            jurisdiction: State jurisdiction
-            max_races: Maximum number of races to return
-            include_recently_closed: Include recently closed races
-            wagering_product: Specific wagering product
-            include_fixed_odds: Include fixed odds information
-            
-        Returns:
-            Dict containing next races
-        """
+        """Get next races to start"""
         params = {
             "jurisdiction": jurisdiction,
             "maxRaces": max_races,
-            "includeRecentlyClosed": include_recently_closed,
-            "wageringProduct": wagering_product,
             "includeFixedOdds": include_fixed_odds
         }
         
@@ -182,41 +174,6 @@ class TABApiClient:
             "GET",
             "/v1/tab-info-service/racing/next-to-go/races",
             params={k: v for k, v in params.items() if v is not None}
-        )
-
-    def get_race(
-        self,
-        meeting_date: str,
-        race_type: Union[RaceType, str],
-        venue_mnemonic: str,
-        race_number: int,
-        jurisdiction: str,
-        fixed_odds: bool = False
-    ) -> Dict:
-        """
-        Get details for a specific race
-        
-        Args:
-            meeting_date: Date in YYYY-MM-DD format
-            race_type: RaceType enum or string
-            venue_mnemonic: Three-letter venue code
-            race_number: Race number
-            jurisdiction: State jurisdiction
-            fixed_odds: Include fixed odds information
-            
-        Returns:
-            Dict containing race details
-        """
-        if isinstance(race_type, RaceType):
-            race_type = race_type.value
-            
-        return self._make_request(
-            "GET",
-            f"/v1/tab-info-service/racing/dates/{meeting_date}/meetings/{race_type}/{venue_mnemonic}/races/{race_number}",
-            params={
-                "jurisdiction": jurisdiction,
-                "fixedOdds": fixed_odds
-            }
         )
 
     def get_race_form(
@@ -228,196 +185,16 @@ class TABApiClient:
         jurisdiction: str,
         fixed_odds: bool = False
     ) -> Dict:
-        """
-        Get form for a specific race
-        
-        Args:
-            meeting_date: Date in YYYY-MM-DD format
-            race_type: RaceType enum or string
-            venue_mnemonic: Three-letter venue code
-            race_number: Race number
-            jurisdiction: State jurisdiction
-            fixed_odds: Include fixed odds information
-            
-        Returns:
-            Dict containing race form details
-        """
+        """Get form for a specific race"""
+        formatted_date = self.format_date(meeting_date)
         if isinstance(race_type, RaceType):
             race_type = race_type.value
             
         return self._make_request(
             "GET",
-            f"/v1/tab-info-service/racing/dates/{meeting_date}/meetings/{race_type}/{venue_mnemonic}/races/{race_number}/form",
+            f"/v1/tab-info-service/racing/dates/{formatted_date}/meetings/{race_type}/{venue_mnemonic}/races/{race_number}/form",
             params={
                 "jurisdiction": jurisdiction,
                 "fixedOdds": fixed_odds
             }
         )
-
-    def get_runner_form(
-        self,
-        meeting_date: str,
-        race_type: Union[RaceType, str],
-        venue_mnemonic: str,
-        race_number: int,
-        runner_number: int,
-        jurisdiction: str,
-        fixed_odds: bool = False
-    ) -> Dict:
-        """
-        Get form for a specific runner
-        
-        Args:
-            meeting_date: Date in YYYY-MM-DD format
-            race_type: RaceType enum or string
-            venue_mnemonic: Three-letter venue code
-            race_number: Race number
-            runner_number: Runner number
-            jurisdiction: State jurisdiction
-            fixed_odds: Include fixed odds information
-            
-        Returns:
-            Dict containing runner form details
-        """
-        if isinstance(race_type, RaceType):
-            race_type = race_type.value
-            
-        return self._make_request(
-            "GET",
-            f"/v1/tab-info-service/racing/dates/{meeting_date}/meetings/{race_type}/{venue_mnemonic}/races/{race_number}/runners/{runner_number}/form",
-            params={
-                "jurisdiction": jurisdiction,
-                "fixedOdds": fixed_odds
-            }
-        )
-
-    def get_race_big_bet(
-        self,
-        meeting_date: str,
-        race_type: Union[RaceType, str],
-        venue_mnemonic: str,
-        race_number: int,
-        jurisdiction: str
-    ) -> Dict:
-        """
-        Get big bet information for a race
-        
-        Args:
-            meeting_date: Date in YYYY-MM-DD format
-            race_type: RaceType enum or string
-            venue_mnemonic: Three-letter venue code
-            race_number: Race number
-            jurisdiction: State jurisdiction
-            
-        Returns:
-            Dict containing big bet information
-        """
-        if isinstance(race_type, RaceType):
-            race_type = race_type.value
-            
-        return self._make_request(
-            "GET",
-            f"/v1/tab-info-service/racing/dates/{meeting_date}/meetings/{race_type}/{venue_mnemonic}/races/{race_number}/big-bets",
-            params={"jurisdiction": jurisdiction}
-        )
-
-    def get_jackpot_pools(
-        self,
-        meeting_date: str,
-        jurisdiction: str
-    ) -> Dict:
-        """
-        Get jackpot pools for a date
-        
-        Args:
-            meeting_date: Date in YYYY-MM-DD format
-            jurisdiction: State jurisdiction
-            
-        Returns:
-            Dict containing jackpot pool information
-        """
-        return self._make_request(
-            "GET",
-            f"/v1/tab-info-service/racing/dates/{meeting_date}/jackpot-pools",
-            params={"jurisdiction": jurisdiction}
-        )
-
-    def get_open_jackpots(self, jurisdiction: str) -> Dict:
-        """
-        Get all open jackpots
-        
-        Args:
-            jurisdiction: State jurisdiction
-            
-        Returns:
-            Dict containing open jackpot information
-        """
-        return self._make_request(
-            "GET",
-            "/v1/tab-info-service/racing/jackpots",
-            params={"jurisdiction": jurisdiction}
-        )
-
-    def get_approximates(
-        self,
-        meeting_date: str,
-        race_type: Union[RaceType, str],
-        venue_mnemonic: str,
-        race_number: int,
-        wagering_product: str,
-        jurisdiction: str
-    ) -> Dict:
-        """
-        Get pool approximates for a race
-        
-        Args:
-            meeting_date: Date in YYYY-MM-DD format
-            race_type: RaceType enum or string
-            venue_mnemonic: Three-letter venue code
-            race_number: Race number
-            wagering_product: Product type
-            jurisdiction: State jurisdiction
-            
-        Returns:
-            Dict containing pool approximate information
-        """
-        if isinstance(race_type, RaceType):
-            race_type = race_type.value
-            
-        return self._make_request(
-            "GET",
-            f"/v1/tab-info-service/racing/dates/{meeting_date}/meetings/{race_type}/{venue_mnemonic}/races/{race_number}/pools/{wagering_product}/approximates",
-            params={"jurisdiction": jurisdiction}
-        )
-
-def main():
-    """Example usage of TAB API Client"""
-    try:
-        # Initialize client
-        client = TABApiClient()
-        
-        # Get next races
-        next_races = client.get_next_to_go_races(
-            jurisdiction="NSW",
-            max_races=5,
-            include_fixed_odds=True
-        )
-        
-        # Print race details
-        for race in next_races.get("races", []):
-            print(f"\nRace {race['raceNumber']} at {race['meeting']['venueName']}")
-            print(f"Start Time: {race['raceStartTime']}")
-            print(f"Distance: {race['raceDistance']}m")
-            
-            print("\nRunners:")
-            for runner in race.get("runners", []):
-                fixed_odds = runner.get("fixedOdds", {}).get("returnWin", "N/A")
-                print(f"{runner['runnerNumber']}. {runner['runnerName']} (${fixed_odds})")
-                
-    except APIError as e:
-        logger.error(f"API Error: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-
-if __name__ == "__main__":
-    main()
