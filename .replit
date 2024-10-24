@@ -28,7 +28,7 @@ args = "streamlit run main.py"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "streamlit run main.py"]
+run = ["sh", "-c", "streamlit run --server.address 0.0.0.0 --server.headless true --server.enableCORS=false --server.enableWebsocketCompression=false main.py"]
 deploymentTarget = "cloudrun"
 
 [[ports]]

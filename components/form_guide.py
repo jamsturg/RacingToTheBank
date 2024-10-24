@@ -40,37 +40,52 @@ def add_filter_controls():
     }
 
 def render_form_guide(form_data: pd.DataFrame):
-    if form_data.empty:
+    # Add default values for missing columns
+    if form_data is not None and not form_data.empty:
+        default_columns = {
+            'confidence': 'Medium',
+            'trend': 'Stable',
+            'Rating': 0.0,
+            'win_rate': 0.0
+        }
+        for col, default in default_columns.items():
+            if col not in form_data.columns:
+                form_data[col] = default
+    else:
         st.warning("No form guide data available for this race.")
         return
         
     # Add filter controls
     filters = add_filter_controls()
     
-    # Apply filters
-    filtered_data = form_data.copy()
-    
-    # Apply filters with column existence checks
-    filter_conditions = [
-        (filtered_data['Rating'] >= filters['min_rating']),
-        (filtered_data['win_rate'] >= filters['min_win_rate']),
-        (filtered_data['Weight'].between(*filters['weight_range'])),
-        (filtered_data['Barrier'].astype(float).between(*filters['barrier_range']))
-    ]
-    
-    # Only add confidence filter if column exists
-    if 'confidence' in filtered_data.columns:
-        filter_conditions.append(filtered_data['confidence'].isin(filters['confidence']))
-    
-    # Only add trend filter if column exists
-    if 'trend' in filtered_data.columns:
-        filter_conditions.append(filtered_data['trend'].isin(filters['trend']))
-    
-    # Combine all filter conditions
-    filtered_data = filtered_data[np.logical_and.reduce(filter_conditions)]
-    
-    if filtered_data.empty:
-        st.warning("No horses match the selected filters.")
+    # Apply filters with error handling
+    try:
+        filtered_data = form_data.copy()
+        
+        # Apply filters with column existence checks
+        filter_conditions = [
+            (filtered_data['Rating'] >= filters['min_rating']),
+            (filtered_data['win_rate'] >= filters['min_win_rate']),
+            (filtered_data['Weight'].between(*filters['weight_range'])),
+            (filtered_data['Barrier'].astype(float).between(*filters['barrier_range']))
+        ]
+        
+        # Only add confidence filter if column exists
+        if 'confidence' in filtered_data.columns:
+            filter_conditions.append(filtered_data['confidence'].isin(filters['confidence']))
+        
+        # Only add trend filter if column exists
+        if 'trend' in filtered_data.columns:
+            filter_conditions.append(filtered_data['trend'].isin(filters['trend']))
+        
+        # Combine all filter conditions
+        filtered_data = filtered_data[np.logical_and.reduce(filter_conditions)]
+        
+        if filtered_data.empty:
+            st.warning("No horses match the selected filters.")
+            return
+    except Exception as e:
+        st.error(f"Error applying filters: {str(e)}")
         return
         
     # Add statistical predictions and confidence levels
@@ -123,51 +138,55 @@ def render_form_guide(form_data: pd.DataFrame):
     
     sorted_data = filtered_data.sort_values(by=sort_col, ascending=ascending)
     
-    # Style the dataframe
-    def style_dataframe(df):
-        try:
-            styled = df.style.apply(
-                lambda x: ['background-color: #F0F2F6' if i % 2 else '' 
-                        for i in range(len(x))], 
-                axis=0
-            )
-            
-            # Apply confidence level colors if column exists
-            if 'confidence' in df.columns:
-                styled = styled.apply(lambda x: [
-                    'background-color: #90EE90' if v == 'High'
-                    else 'background-color: #FFFFE0' if v == 'Medium'
-                    else 'background-color: #FFB6C1' if v == 'Low'
-                    else '' for v in x
-                ], subset=['confidence'])
-            
-            # Apply rating colors
-            if 'Rating' in df.columns:
-                styled = styled.apply(lambda x: [
-                    'background-color: #90EE90' if isinstance(v, (int, float)) and v >= 80
-                    else 'background-color: #FFFFE0' if isinstance(v, (int, float)) and v >= 70
-                    else 'background-color: #FFB6C1' if isinstance(v, (int, float))
-                    else '' for v in x
-                ], subset=['Rating'])
-            
-            return styled
-        except Exception as e:
-            st.error(f"Error styling data: {str(e)}")
-            return df
+    # Style the dataframe with error handling
+    try:
+        styled_data = style_dataframe(sorted_data)
+        st.dataframe(styled_data, height=400, use_container_width=True)
+    except Exception as e:
+        st.error(f"Error displaying data: {str(e)}")
+        st.dataframe(sorted_data, height=400, use_container_width=True)
     
-    st.subheader("Form Guide")
-    st.dataframe(
-        style_dataframe(sorted_data),
-        height=400,
-        use_container_width=True
-    )
-    
-    # Add download button
-    csv = sorted_data.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        "Download Form Guide",
-        csv,
-        "form_guide.csv",
-        "text/csv",
-        key='download-form-guide'
-    )
+    # Add download button with error handling
+    try:
+        csv = sorted_data.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            "Download Form Guide",
+            csv,
+            "form_guide.csv",
+            "text/csv",
+            key='download-form-guide'
+        )
+    except Exception as e:
+        st.error(f"Error creating download button: {str(e)}")
+
+def style_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Style the dataframe with error handling"""
+    try:
+        styled = df.style.apply(
+            lambda x: ['background-color: #F0F2F6' if i % 2 else '' 
+                    for i in range(len(x))], 
+            axis=0
+        )
+        
+        # Apply confidence level colors if column exists
+        if 'confidence' in df.columns:
+            styled = styled.apply(lambda x: [
+                'background-color: #90EE90' if v == 'High'
+                else 'background-color: #FFFFE0' if v == 'Medium'
+                else 'background-color: #FFB6C1' if v == 'Low'
+                else '' for v in x
+            ], subset=['confidence'])
+        
+        # Apply rating colors
+        if 'Rating' in df.columns:
+            styled = styled.apply(lambda x: [
+                'background-color: #90EE90' if isinstance(v, (int, float)) and v >= 80
+                else 'background-color: #FFFFE0' if isinstance(v, (int, float)) and v >= 70
+                else 'background-color: #FFB6C1' if isinstance(v, (int, float))
+                else '' for v in x
+            ], subset=['Rating'])
+        
+        return styled
+    except Exception as e:
+        print(f"Error styling dataframe: {str(e)}")
+        return df

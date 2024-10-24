@@ -1,49 +1,17 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 from datetime import datetime
-import openai
-from openai import OpenAI
+import time
+import json
+from utils.alerts import create_alert_system
 from utils.api_client import RacingAPIClient
 from utils.data_processor import RaceDataProcessor
 from utils.statistical_predictor import StatisticalPredictor
 from utils.export_utils import format_race_data, export_to_csv, export_to_json, export_to_text, export_to_pdf
-from utils.alerts import create_alert_system
 from components.form_guide import render_form_guide
 from components.speed_map import create_speed_map
 from components.track_bias import create_track_bias_chart
 from components.predictions import render_predictions, create_confidence_chart
 from typing import Dict
-import time
-import json
-
-def extract_race_info(race_data):
-    # Handle list format
-    if isinstance(race_data, list):
-        if race_data and isinstance(race_data[0], dict):
-            return {
-                'startTime': race_data[0].get('startTime', ''),
-                'trackCondition': race_data[0].get('trackCondition', ''),
-                'distance': race_data[0].get('distance', ''),
-                'raceStatus': race_data[0].get('status', ''),
-                'prizeMoney': race_data[0].get('prizeMoney', '0')
-            }
-        return {}
-    
-    # Handle dict format
-    if isinstance(race_data, dict):
-        if 'payLoad' in race_data:
-            if isinstance(race_data['payLoad'], dict):
-                return race_data['payLoad'].get('raceInfo', {})
-            elif isinstance(race_data['payLoad'], list) and race_data['payLoad']:
-                first_item = race_data['payLoad'][0]
-                return {
-                    'startTime': first_item.get('startTime', ''),
-                    'trackCondition': first_item.get('trackCondition', ''),
-                    'distance': first_item.get('distance', ''),
-                    'raceStatus': first_item.get('status', '')
-                }
-    return {}
 
 def main():
     st.set_page_config(
@@ -52,9 +20,12 @@ def main():
         layout="wide"
     )
 
-    # Initialize alert system
-    alert_system = create_alert_system()
+    # Initialize alert system at the start
+    if 'alert_system' not in st.session_state:
+        st.session_state.alert_system = create_alert_system()
+    alert_system = st.session_state.alert_system
 
+    # Initialize session state variables
     if 'messages' not in st.session_state:
         st.session_state.messages = []
     if 'show_chat' not in st.session_state:
@@ -127,8 +98,6 @@ def main():
             st.error("Unable to fetch race data")
             return
 
-        # Process race information with the new extraction function
-        race_info = extract_race_info(race_data)
         form_data = data_processor.prepare_form_guide(race_data)
 
         # Add real-time alerts section
@@ -136,11 +105,14 @@ def main():
             st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
             st.subheader("🔔 Race Alerts")
             
-            # Check for odds changes
-            current_odds = {
-                horse['Horse']: horse.get('fixed_odds', 0) 
-                for _, horse in form_data.iterrows()
-            }
+            # Check for odds changes with error handling
+            current_odds = {}
+            try:
+                for _, horse in form_data.iterrows():
+                    if 'fixed_odds' in horse:
+                        current_odds[horse['Horse']] = float(horse['fixed_odds'])
+            except Exception as e:
+                print(f"Error processing odds: {str(e)}")
             
             # Monitor odds changes with cooldown
             current_time = datetime.now()
@@ -162,7 +134,7 @@ def main():
             st.session_state.previous_odds = current_odds
             
             # Add time-based alerts
-            race_time = race_info.get('startTime')
+            race_time = race_data.get('startTime')
             if race_time:
                 try:
                     race_time = datetime.strptime(race_time, "%Y-%m-%d %H:%M:%S")
@@ -185,23 +157,8 @@ def main():
                     alert['severity']
                 )
             
-            # Check track condition changes
-            track_condition = race_info.get('trackCondition', '')
-            if 'previous_condition' not in st.session_state:
-                st.session_state.previous_condition = track_condition
-            elif track_condition != st.session_state.previous_condition:
-                alert_system.add_alert(
-                    "track",
-                    f"Track condition changed from {st.session_state.previous_condition} to {track_condition}",
-                    "warning"
-                )
-                st.session_state.previous_condition = track_condition
-            
-            # Render alerts in a grid layout
-            with st.container():
-                st.markdown('<div class="metric-grid">', unsafe_allow_html=True)
-                alert_system.render_alerts()
-                st.markdown('</div>', unsafe_allow_html=True)
+            # Render alerts
+            alert_system.render_alerts()
             st.markdown('</div>', unsafe_allow_html=True)
 
         # Form Guide Section
@@ -232,14 +189,6 @@ def main():
             }
             track_bias_chart = create_track_bias_chart(track_bias)
             st.plotly_chart(track_bias_chart, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Alerts Section
-        with st.container():
-            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
-            st.subheader("🔔 Recent Alerts")
-            alert_system.process_alerts()
-            alert_system.render_alerts()
             st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
