@@ -32,20 +32,16 @@ def initialize_client():
     """Initialize Punting Form API client"""
     if st.session_state.client is None:
         try:
-            api_key = st.secrets.get("PUNTING_FORM_API_KEY")
-            proxy_url = st.secrets.get("PROXY_URL")
-            
+            # Get API key from secrets
+            api_key = st.secrets["punting_form"]["api_key"]
             if not api_key:
                 st.error("Missing Punting Form API key")
                 st.stop()
-                
-            if not proxy_url:
-                st.warning("Missing proxy configuration - requests may be rate limited")
-                
+            
             st.session_state.client = PuntingFormAPI(api_key)
             st.session_state.last_error = None
         except Exception as e:
-            st.session_state.last_error = str(e)
+            logger.error(f"Client initialization error: {str(e)}")
             st.error(f"Failed to initialize client: {str(e)}")
             st.stop()
 
@@ -62,7 +58,7 @@ def format_race_name(race: Dict) -> str:
     distance = race.get('distance', '')
     return f"Race {number} - {name} ({distance}m)" if distance else f"Race {number} - {name}"
 
-def handle_api_request(func, *args, **kwargs):
+def handle_api_request(func, *args, **kwargs) -> Dict:
     """Generic API request handler with error handling"""
     try:
         response = func(*args, **kwargs)
@@ -77,11 +73,13 @@ def handle_api_request(func, *args, **kwargs):
         st.error(f"Request failed: {str(e)}")
         return None
 
-def format_date(date_obj: datetime) -> str:
+def format_date(date_obj) -> str:
     """Format date for API requests"""
     try:
         if isinstance(date_obj, datetime):
             return date_obj.strftime("%Y-%m-%d")
+        elif isinstance(date_obj, str):
+            return datetime.strptime(date_obj, "%Y-%m-%d").strftime("%Y-%m-%d")
         return date_obj.strftime("%Y-%m-%d")
     except Exception as e:
         logger.error(f"Date formatting error: {str(e)}")
