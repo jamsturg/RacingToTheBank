@@ -17,6 +17,22 @@ from typing import Dict
 import time
 import json
 
+def extract_race_info(race_data):
+    """Extract race info from different payload formats"""
+    if isinstance(race_data, dict):
+        return race_data.get('payLoad', {}).get('raceInfo', {})
+    elif isinstance(race_data, list) and race_data:
+        # If it's a list, try to get race info from the first item
+        first_item = race_data[0]
+        if isinstance(first_item, dict):
+            return {
+                'startTime': first_item.get('startTime', ''),
+                'trackCondition': first_item.get('trackCondition', ''),
+                'distance': first_item.get('distance', ''),
+                'raceStatus': first_item.get('status', '')
+            }
+    return {}
+
 def main():
     st.set_page_config(
         page_title="To The Bank - Racing Analysis",
@@ -33,6 +49,8 @@ def main():
         st.session_state.show_chat = False
     if 'previous_odds' not in st.session_state:
         st.session_state.previous_odds = {}
+    if 'last_alert_time' not in st.session_state:
+        st.session_state.last_alert_time = {}
 
     # Main header
     st.markdown('''
@@ -97,8 +115,8 @@ def main():
             st.error("Unable to fetch race data")
             return
 
-        # Process race information
-        race_info = race_data.get('payLoad', {}).get('raceInfo', {})
+        # Process race information with the new extraction function
+        race_info = extract_race_info(race_data)
         form_data = data_processor.prepare_form_guide(race_data)
 
         # Add real-time alerts section
@@ -112,17 +130,21 @@ def main():
                 for _, horse in form_data.iterrows()
             }
             
-            # Monitor odds changes
+            # Monitor odds changes with cooldown
+            current_time = datetime.now()
             for horse, current in current_odds.items():
                 if horse in st.session_state.previous_odds:
                     prev = st.session_state.previous_odds[horse]
                     if abs(current - prev) >= 2.0:
-                        direction = "shortened" if current < prev else "drifted"
-                        alert_system.add_alert(
-                            "odds",
-                            f"{horse} has {direction} from {prev:.1f} to {current:.1f}",
-                            "info"
-                        )
+                        last_alert = st.session_state.last_alert_time.get(horse, datetime.min)
+                        if (current_time - last_alert).total_seconds() > 300:  # 5-minute cooldown
+                            direction = "shortened" if current < prev else "drifted"
+                            alert_system.add_alert(
+                                "odds",
+                                f"{horse} has {direction} from {prev:.1f} to {current:.1f}",
+                                "info"
+                            )
+                            st.session_state.last_alert_time[horse] = current_time
             
             # Update previous odds
             st.session_state.previous_odds = current_odds
@@ -150,6 +172,18 @@ def main():
                     alert['message'],
                     alert['severity']
                 )
+            
+            # Check track condition changes
+            track_condition = race_info.get('trackCondition', '')
+            if 'previous_condition' not in st.session_state:
+                st.session_state.previous_condition = track_condition
+            elif track_condition != st.session_state.previous_condition:
+                alert_system.add_alert(
+                    "track",
+                    f"Track condition changed from {st.session_state.previous_condition} to {track_condition}",
+                    "warning"
+                )
+                st.session_state.previous_condition = track_condition
             
             # Render alerts
             alert_system.render_alerts()
