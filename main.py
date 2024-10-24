@@ -43,7 +43,6 @@ def extract_race_details(race_data) -> Dict:
                     'raceType': first_runner.get('raceType', ''),
                     'raceTime': first_runner.get('raceTime', '')
                 }
-                
         return race_info
     except Exception as e:
         print(f"Error extracting race details: {str(e)}")
@@ -60,7 +59,7 @@ def get_ai_response(prompt: str, race_context: str) -> str:
             max_tokens=150,
             temperature=0.7
         )
-        return response.choices[0].message.content
+        return str(response.choices[0].message.content)
     except Exception as e:
         return f"I apologize, I'm having trouble processing your request: {str(e)}"
 
@@ -83,12 +82,88 @@ def extract_odds(race_data) -> Dict:
         print(f"Error extracting odds: {str(e)}")
     return odds
 
+def display_race_details(race_info: Dict):
+    """Display race details in a formatted way"""
+    try:
+        distance = race_info.get('distance', '')
+        if isinstance(distance, (int, float)):
+            st.metric("Distance", f"{distance}m")
+        elif isinstance(distance, str) and distance:
+            st.metric("Distance", distance)
+        else:
+            st.metric("Distance", "Not available")
+            
+        track_condition = race_info.get('trackCondition', '')
+        st.metric("Track Condition", 
+                 track_condition if track_condition else "Not available")
+        
+        prize_money = race_info.get('prizeMoney', 0)
+        if isinstance(prize_money, (int, float)):
+            st.metric("Prize Money", f"${prize_money:,.2f}")
+        else:
+            st.metric("Prize Money", "Not available")
+            
+        race_type = race_info.get('raceType', '')
+        if race_type:
+            st.metric("Race Type", race_type)
+            
+        race_time = race_info.get('raceTime', '')
+        if race_time:
+            st.metric("Race Time", race_time)
+            
+    except Exception as e:
+        st.error(f"Error displaying race details: {str(e)}")
+
 def main():
     st.set_page_config(
         page_title="To The Bank - Racing Analysis",
         page_icon="🏇",
         layout="wide"
     )
+
+    # Custom CSS for main container
+    st.markdown('''
+        <style>
+        .main-container {
+            background-color: #FFFFFF;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #1E88E5 0%, #64B5F6 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .section-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #E0E0E0;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .highlight-text {
+            color: #1E88E5;
+            font-weight: 600;
+        }
+
+        .alert-card {
+            border-left: 4px solid #FFD700;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: white;
+            border-radius: 0 8px 8px 0;
+        }
+        </style>
+    ''', unsafe_allow_html=True)
 
     # Initialize alert system
     alert_system = create_alert_system()
@@ -100,67 +175,75 @@ def main():
     if 'previous_odds' not in st.session_state:
         st.session_state.previous_odds = {}
 
-    st.markdown("""
-        <h1 style='text-align: center; padding: 1rem; background-color: #1E88E5; color: white;'>
-            To The Bank
-        </h1>
-    """, unsafe_allow_html=True)
-    
-    api_client = RacingAPIClient()
-    data_processor = RaceDataProcessor()
-    statistical_predictor = StatisticalPredictor()
-    
-    st.sidebar.title("Races")
-    st.session_state.show_chat = st.sidebar.checkbox("Show Chat Assistant", value=st.session_state.show_chat)
-    
-    today = datetime.now().strftime("%Y-%m-%d")
-    meetings = api_client.get_meetings(today)
-    
-    if not meetings:
-        st.error("No meetings available for today")
-        return
+    # Main header
+    st.markdown('''
+        <div class="header">
+            <h1 style="margin:0; font-size: 2.5rem;">To The Bank</h1>
+            <p style="margin:0; opacity:0.9;">Racing Analysis Platform</p>
+        </div>
+    ''', unsafe_allow_html=True)
 
-    meeting_options = {}
-    for meeting in meetings:
-        if 'track' in meeting and isinstance(meeting['track'], dict):
-            track_name = meeting['track'].get('name', 'Unknown Track')
-        else:
-            track_name = meeting.get('meetingName', 'Unknown Track')
+    # Sidebar styling
+    with st.sidebar:
+        st.markdown('''
+            <div style="padding: 1rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="color: #1E88E5; margin-bottom: 1rem;">Race Selection</h3>
+            </div>
+        ''', unsafe_allow_html=True)
         
-        meeting_id = meeting.get('meetingId')
-        if meeting_id:
-            meeting_options[f"{track_name} - {meeting_id}"] = meeting_id
+        st.session_state.show_chat = st.checkbox("Show Chat Assistant", value=st.session_state.show_chat)
+        
+        today = datetime.now().strftime("%Y-%m-%d")
+        api_client = RacingAPIClient()
+        data_processor = RaceDataProcessor()
+        statistical_predictor = StatisticalPredictor()
+        
+        meetings = api_client.get_meetings(today)
+        
+        if not meetings:
+            st.error("No meetings available for today")
+            return
 
-    if not meeting_options:
-        st.error("No valid meetings found")
-        return
-    
-    selected_meeting = st.sidebar.selectbox(
-        "Select Meeting",
-        options=list(meeting_options.keys())
-    )
-    meeting_id = meeting_options[selected_meeting]
-    
-    race_number = st.sidebar.number_input(
-        "Race Number",
-        min_value=1,
-        max_value=12,
-        value=1
-    )
+        meeting_options = {}
+        for meeting in meetings:
+            if isinstance(meeting, dict):
+                if 'track' in meeting and isinstance(meeting['track'], dict):
+                    track_name = meeting['track'].get('name', 'Unknown Track')
+                else:
+                    track_name = meeting.get('meetingName', 'Unknown Track')
+                
+                meeting_id = meeting.get('meetingId')
+                if meeting_id:
+                    meeting_options[f"{track_name} - {meeting_id}"] = meeting_id
 
-    # Auto-refresh toggle
-    auto_refresh = st.sidebar.checkbox("Enable Auto-refresh", value=False)
-    if auto_refresh:
-        st.sidebar.info("Auto-refreshing every 30 seconds")
-        time.sleep(30)
-        st.experimental_rerun()
-    
-    if st.session_state.show_chat:
-        col1, col2, col3 = st.columns([2, 1, 1])
-    else:
-        col1, col2 = st.columns([2, 1])
-    
-    with col1:
+        if not meeting_options:
+            st.error("No valid meetings found")
+            return
+        
+        selected_meeting = st.selectbox(
+            "Select Meeting",
+            options=list(meeting_options.keys())
+        )
+        meeting_id = meeting_options[selected_meeting]
+        
+        race_number = st.number_input(
+            "Race Number",
+            min_value=1,
+            max_value=12,
+            value=1
+        )
+
+        # Auto-refresh toggle
+        auto_refresh = st.checkbox("Enable Auto-refresh", value=False)
+        if auto_refresh:
+            st.info("Auto-refreshing every 30 seconds")
+            time.sleep(30)
+            st.rerun()
+
+    # Create two main columns for layout
+    main_col1, main_col2 = st.columns([7, 3])
+
+    with main_col1:
         race_data = api_client.get_race_data(meeting_id, race_number)
 
         if not race_data:
@@ -194,10 +277,7 @@ def main():
             except Exception as e:
                 print(f"Error processing time alerts: {str(e)}")
 
-        # Process and display alerts
-        alert_system.process_alerts()
-        alert_system.render_alerts()
-
+        # Process form data
         form_data = data_processor.prepare_form_guide(race_data)
         
         if not form_data.empty:
@@ -220,157 +300,122 @@ def main():
                     'trend': seasonal_patterns.get('trend', 'Unknown'),
                     'seasonal_effect': seasonal_patterns.get('seasonal_effect', False)
                 })
-            
-            prediction_df = pd.DataFrame(predictions)
-            form_data = form_data.merge(
-                prediction_df, left_on='Horse', right_on='horse', how='left'
-            )
 
-            # Export options
-            with st.expander("Export Options", expanded=False):
-                col_export1, col_export2, col_export3, col_export4 = st.columns(4)
+            # Form Guide Section
+            with st.container():
+                st.markdown('<div class="section-card">', unsafe_allow_html=True)
+                st.subheader("🏇 Race Form Guide")
+                render_form_guide(form_data)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            # Speed Map Section
+            with st.container():
+                st.markdown('<div class="section-card">', unsafe_allow_html=True)
+                st.subheader("🗺️ Speed Map")
+                speed_map = create_speed_map(form_data)
+                st.plotly_chart(speed_map, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+    with main_col2:
+        # Race Details Section
+        with st.container():
+            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.subheader("📊 Race Details")
+            display_race_details(race_info)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # Alerts Section
+        with st.container():
+            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.subheader("🔔 Race Alerts")
+            alert_system.process_alerts()
+            alert_system.render_alerts()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # Predictions Section
+        with st.container():
+            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.subheader("🎯 AI Predictions")
+            if 'predictions' in locals():
+                render_predictions(predictions)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # Export Options
+        if 'form_data' in locals() and not form_data.empty:
+            with st.container():
+                st.markdown('<div class="section-card">', unsafe_allow_html=True)
+                st.subheader("📊 Export Options")
                 
+                col_export1, col_export2 = st.columns(2)
                 with col_export1:
                     csv_data = export_to_csv(form_data)
                     st.download_button(
-                        "Download CSV",
+                        "CSV",
                         csv_data,
                         "form_guide.csv",
                         "text/csv",
                         key='download-csv'
                     )
-                
-                with col_export2:
+                    
                     export_data = format_race_data(form_data, predictions, race_info)
                     json_data = export_to_json(export_data)
                     st.download_button(
-                        "Download JSON",
+                        "JSON",
                         json_data,
                         "race_analysis.json",
                         "application/json",
                         key='download-json'
                     )
                 
-                with col_export3:
+                with col_export2:
                     text_report = export_to_text(export_data)
                     st.download_button(
-                        "Download TXT",
+                        "TXT",
                         text_report,
                         "race_analysis.txt",
                         "text/plain",
                         key='download-txt'
                     )
                     
-                with col_export4:
                     pdf_data = export_to_pdf(export_data)
                     if pdf_data:
                         st.download_button(
-                            "Download PDF",
+                            "PDF",
                             pdf_data,
                             "race_analysis.pdf",
                             "application/pdf",
                             key='download-pdf'
                         )
+                st.markdown('</div>', unsafe_allow_html=True)
 
-            with st.expander("Form Guide", expanded=True):
-                render_form_guide(form_data)
-            
-            with st.expander("Speed Map", expanded=False):
-                st.subheader("Speed Map")
-                speed_map = create_speed_map(form_data)
-                st.plotly_chart(speed_map, use_container_width=True)
-
-            if track_bias:
-                with st.expander("Track Bias Analysis", expanded=False):
-                    col_bias1, col_bias2 = st.columns(2)
-                    with col_bias1:
-                        st.metric("Inside Barrier Advantage", 
-                                f"{track_bias['inside_advantage']:.2f}")
-                    with col_bias2:
-                        st.metric("Pace Bias", track_bias['pace_bias'])
-    
-    with col2:
-        with st.expander("Race Details", expanded=True):
-            try:
-                race_info = extract_race_details(race_data)
-                
-                distance = race_info.get('distance', '')
-                if isinstance(distance, (int, float)):
-                    st.metric("Distance", f"{distance}m")
-                elif isinstance(distance, str) and distance:
-                    st.metric("Distance", distance)
-                else:
-                    st.metric("Distance", "Not available")
-                    
-                track_condition = race_info.get('trackCondition', '')
-                st.metric("Track Condition", 
-                         track_condition if track_condition else "Not available")
-                
-                prize_money = race_info.get('prizeMoney', 0)
-                if isinstance(prize_money, (int, float)):
-                    st.metric("Prize Money", f"${prize_money:,.2f}")
-                else:
-                    st.metric("Prize Money", "Not available")
-                    
-                race_type = race_info.get('raceType', '')
-                if race_type:
-                    st.metric("Race Type", race_type)
-                    
-                race_time = race_info.get('raceTime', '')
-                if race_time:
-                    st.metric("Race Time", race_time)
-                    
-            except Exception as e:
-                st.error(f"Error displaying race details: {str(e)}")
-        
-        with st.expander("AI Predictions", expanded=True):
-            try:
-                if not form_data.empty and 'Horse' in form_data.columns and 'Rating' in form_data.columns:
-                    predictions = [
-                        {
-                            'horse': str(row['Horse']),
-                            'score': float(row['Rating']) if pd.notnull(row['Rating']) else 0,
-                            'barrier': str(row['Barrier']) if 'Barrier' in form_data.columns else 'Unknown',
-                            'jockey': str(row['Jockey']) if 'Jockey' in form_data.columns else 'Unknown'
-                        }
-                        for _, row in form_data.nlargest(3, 'Rating').iterrows()
-                    ]
-                    
-                    if predictions:
-                        render_predictions(predictions)
-                        confidence_chart = create_confidence_chart(predictions)
-                        st.plotly_chart(confidence_chart, use_container_width=True)
-                    else:
-                        st.warning("No valid predictions available")
-                else:
-                    st.warning("Insufficient data for predictions")
-            except Exception as e:
-                st.error(f"Error generating predictions: {str(e)}")
-    
+    # Chat Assistant
     if st.session_state.show_chat:
-        with col3:
-            with st.expander("Race Assistant", expanded=True):
-                for message in st.session_state.messages:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
+        with st.container():
+            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.subheader("💬 Race Assistant")
+            
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+            
+            if prompt := st.chat_input("Ask about the race..."):
+                st.session_state.messages.append({"role": "user", "content": prompt})
                 
-                if prompt := st.chat_input("Ask about the race..."):
-                    st.session_state.messages.append({"role": "user", "content": prompt})
-                    
-                    race_context = f"Race at {selected_meeting.split(' - ')[0]}, Race {race_number}. "
-                    if not form_data.empty:
-                        top_horses = form_data.nlargest(3, 'Rating')['Horse'].tolist()
-                        race_context += f"Top 3 rated horses: {', '.join(top_horses)}"
-                    
-                    response = get_ai_response(prompt, race_context)
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-    
-    if st.sidebar.button("Refresh Data"):
-        st.rerun()
-    
+                race_context = f"Race at {selected_meeting.split(' - ')[0]}, Race {race_number}. "
+                if 'form_data' in locals() and not form_data.empty:
+                    top_horses = form_data.nlargest(3, 'Rating')['Horse'].tolist()
+                    race_context += f"Top 3 rated horses: {', '.join(top_horses)}"
+                
+                response = get_ai_response(prompt, race_context)
+                st.session_state.messages.append({"role": "assistant", "content": response})
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown("---")
     st.markdown(
-        "Data provided by PuntingForm API. Predictions are for entertainment purposes only."
+        '<p style="text-align: center; color: #666;">Data provided by PuntingForm API. '
+        'Predictions are for entertainment purposes only.</p>',
+        unsafe_allow_html=True
     )
 
 if __name__ == "__main__":
