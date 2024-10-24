@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from datetime import datetime
 import openai
 from openai import OpenAI
@@ -7,9 +8,12 @@ from utils.api_client import RacingAPIClient
 from utils.data_processor import RaceDataProcessor
 from utils.statistical_predictor import StatisticalPredictor
 from utils.export_utils import format_race_data, export_to_csv, export_to_json, export_to_text, export_to_pdf
+from utils.alerts import create_alert_system
 from components.form_guide import render_form_guide, create_speed_map
 from components.predictions import render_predictions, create_confidence_chart
 from typing import Dict
+import time
+import json
 
 client = OpenAI()
 
@@ -60,6 +64,25 @@ def get_ai_response(prompt: str, race_context: str) -> str:
     except Exception as e:
         return f"I apologize, I'm having trouble processing your request: {str(e)}"
 
+def extract_odds(race_data) -> Dict:
+    """Extract current odds from race data"""
+    odds = {}
+    try:
+        if isinstance(race_data, dict):
+            payload = race_data.get('payLoad', {})
+            runners = payload.get('runners', []) if isinstance(payload, dict) else payload
+            
+            for runner in runners:
+                if isinstance(runner, dict):
+                    horse_name = runner.get('name', runner.get('horseName', ''))
+                    fixed_odds = runner.get('fixedOdds', {})
+                    if isinstance(fixed_odds, dict):
+                        current_price = float(fixed_odds.get('currentPrice', 0))
+                        odds[horse_name] = current_price
+    except Exception as e:
+        print(f"Error extracting odds: {str(e)}")
+    return odds
+
 def main():
     st.set_page_config(
         page_title="To The Bank - Racing Analysis",
@@ -67,13 +90,18 @@ def main():
         layout="wide"
     )
 
+    # Initialize alert system
+    alert_system = create_alert_system()
+
     if 'messages' not in st.session_state:
         st.session_state.messages = []
     if 'show_chat' not in st.session_state:
         st.session_state.show_chat = False
+    if 'previous_odds' not in st.session_state:
+        st.session_state.previous_odds = {}
 
     st.markdown("""
-        <h1 style='text-align: center; padding: 1rem; background-color: #FF4B4B; color: white;'>
+        <h1 style='text-align: center; padding: 1rem; background-color: #1E88E5; color: white;'>
             To The Bank
         </h1>
     """, unsafe_allow_html=True)
@@ -119,6 +147,13 @@ def main():
         max_value=12,
         value=1
     )
+
+    # Auto-refresh toggle
+    auto_refresh = st.sidebar.checkbox("Enable Auto-refresh", value=False)
+    if auto_refresh:
+        st.sidebar.info("Auto-refreshing every 30 seconds")
+        time.sleep(30)
+        st.experimental_rerun()
     
     if st.session_state.show_chat:
         col1, col2, col3 = st.columns([2, 1, 1])
@@ -131,6 +166,37 @@ def main():
         if not race_data:
             st.error("Unable to fetch race data")
             return
+
+        # Process alerts
+        current_odds = extract_odds(race_data)
+        
+        # Check for odds changes
+        if st.session_state.previous_odds:
+            odds_alerts = alert_system.check_odds_changes(current_odds, st.session_state.previous_odds)
+            for alert in odds_alerts:
+                alert_system.add_alert(alert["type"], alert["message"], alert["severity"])
+        
+        st.session_state.previous_odds = current_odds
+        
+        # Check race status
+        status_alerts = alert_system.check_race_status(race_data)
+        for alert in status_alerts:
+            alert_system.add_alert(alert["type"], alert["message"], alert["severity"])
+        
+        # Check time alerts
+        race_info = extract_race_details(race_data)
+        if race_info.get('raceTime'):
+            try:
+                race_time = datetime.strptime(race_info['raceTime'], "%Y-%m-%d %H:%M:%S")
+                time_alerts = alert_system.check_time_alerts(race_time)
+                for alert in time_alerts:
+                    alert_system.add_alert(alert["type"], alert["message"], alert["severity"])
+            except Exception as e:
+                print(f"Error processing time alerts: {str(e)}")
+
+        # Process and display alerts
+        alert_system.process_alerts()
+        alert_system.render_alerts()
 
         form_data = data_processor.prepare_form_guide(race_data)
         
@@ -175,7 +241,7 @@ def main():
                     )
                 
                 with col_export2:
-                    export_data = format_race_data(form_data, predictions, extract_race_details(race_data))
+                    export_data = format_race_data(form_data, predictions, race_info)
                     json_data = export_to_json(export_data)
                     st.download_button(
                         "Download JSON",

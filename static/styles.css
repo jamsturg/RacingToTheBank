@@ -1,13 +1,14 @@
 /* Base styles */
 .stApp {
-    padding: 0.5rem !important;
+    padding: 1rem !important;
+    background-color: #FFFFFF;
 }
 
 /* Header styles */
 .stMarkdown h1 {
-    padding: 0.75rem !important;
-    margin-bottom: 1rem !important;
-    background: linear-gradient(90deg, #FF4B4B 0%, #FF6B6B 100%);
+    padding: 1rem !important;
+    margin-bottom: 1.5rem !important;
+    background: linear-gradient(90deg, #1E88E5 0%, #64B5F6 100%);
     color: white;
     border-radius: 8px;
     text-align: center;
@@ -15,81 +16,110 @@
     font-weight: 600;
 }
 
-/* Make components more compact */
-.race-card, .stMetric, .filter-section {
-    padding: 0.75rem !important;
-    margin-bottom: 0.75rem !important;
+/* Component cards */
+.streamlit-expanderHeader {
+    background: #FFFFFF !important;
+    border: 1px solid #E0E0E0 !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* Make metrics more compact */
+.streamlit-expanderContent {
+    background: #FFFFFF !important;
+    border: 1px solid #E0E0E0 !important;
+    border-top: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Metric styling */
 .stMetric {
-    padding: 0.5rem !important;
-    margin: 0.25rem 0 !important;
-}
-
-/* Reduce table row height */
-.dataframe td, .dataframe th {
-    padding: 6px !important;
-    font-size: 0.9rem !important;
-}
-
-/* Expander styles */
-.streamlit-expander {
-    border: 1px solid #e6e6e6;
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
-}
-
-.streamlit-expander .streamlit-expanderHeader {
-    padding: 0.75rem !important;
-    background: white;
-    border-radius: 8px;
-    font-weight: 500;
-}
-
-.streamlit-expander .streamlit-expanderContent {
+    background: white !important;
     padding: 1rem !important;
-    background: white;
-    border-top: 1px solid #e6e6e6;
+    border-radius: 8px !important;
+    border: 1px solid #E0E0E0 !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.streamlit-expander[data-expanded=true] .streamlit-expanderHeader {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+/* Button styling */
+.stButton > button {
+    background: linear-gradient(90deg, #1E88E5 0%, #64B5F6 100%) !important;
+    color: white !important;
+    border: none !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
 }
 
-/* Reduce chart heights */
+.stButton > button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+}
+
+/* Table styling */
+.dataframe {
+    border: 1px solid #E0E0E0 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+}
+
+.dataframe thead th {
+    background: #1E88E5 !important;
+    color: white !important;
+    font-weight: 500 !important;
+}
+
+.dataframe tbody tr:nth-child(even) {
+    background-color: #F8F9FA !important;
+}
+
+/* Alert styling */
+.stAlert {
+    border-radius: 8px !important;
+    border: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+}
+
+/* Chart container styling */
 .js-plotly-plot {
-    max-height: 300px !important;
+    border-radius: 8px !important;
+    background: white !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
 }
 
-/* Export button styles */
-.export-buttons {
-    display: flex;
-    gap: 0.5rem;
-    margin: 0.5rem 0;
+/* Filter section styling */
+.filter-section {
+    background: #F8F9FA !important;
+    padding: 1rem !important;
+    border-radius: 8px !important;
+    margin-bottom: 1rem !important;
 }
 
-.export-button {
-    padding: 0.5rem 0.75rem !important;
-    font-size: 0.9rem !important;
+/* Add yellow accent for highlights */
+.highlight {
+    background-color: #FFD700 !important;
+    color: #212529 !important;
 }
 
-/* Responsive design */
+.confidence-high {
+    color: #1E88E5 !important;
+}
+
+.alert-important {
+    border-left: 4px solid #FFD700 !important;
+}
+
+/* Responsive improvements */
 @media screen and (max-width: 768px) {
     .stApp {
         padding: 0.5rem !important;
     }
     
-    .race-card {
+    .stMetric {
         padding: 0.75rem !important;
     }
     
     .dataframe {
         font-size: 0.85rem !important;
-    }
-    
-    .export-buttons {
-        flex-direction: column;
     }
 }
