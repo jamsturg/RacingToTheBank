@@ -18,19 +18,31 @@ import time
 import json
 
 def extract_race_info(race_data):
-    """Extract race info from different payload formats"""
-    if isinstance(race_data, dict):
-        return race_data.get('payLoad', {}).get('raceInfo', {})
-    elif isinstance(race_data, list) and race_data:
-        # If it's a list, try to get race info from the first item
-        first_item = race_data[0]
-        if isinstance(first_item, dict):
+    # Handle list format
+    if isinstance(race_data, list):
+        if race_data and isinstance(race_data[0], dict):
             return {
-                'startTime': first_item.get('startTime', ''),
-                'trackCondition': first_item.get('trackCondition', ''),
-                'distance': first_item.get('distance', ''),
-                'raceStatus': first_item.get('status', '')
+                'startTime': race_data[0].get('startTime', ''),
+                'trackCondition': race_data[0].get('trackCondition', ''),
+                'distance': race_data[0].get('distance', ''),
+                'raceStatus': race_data[0].get('status', ''),
+                'prizeMoney': race_data[0].get('prizeMoney', '0')
             }
+        return {}
+    
+    # Handle dict format
+    if isinstance(race_data, dict):
+        if 'payLoad' in race_data:
+            if isinstance(race_data['payLoad'], dict):
+                return race_data['payLoad'].get('raceInfo', {})
+            elif isinstance(race_data['payLoad'], list) and race_data['payLoad']:
+                first_item = race_data['payLoad'][0]
+                return {
+                    'startTime': first_item.get('startTime', ''),
+                    'trackCondition': first_item.get('trackCondition', ''),
+                    'distance': first_item.get('distance', ''),
+                    'raceStatus': first_item.get('status', '')
+                }
     return {}
 
 def main():
@@ -121,7 +133,7 @@ def main():
 
         # Add real-time alerts section
         with st.container():
-            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
             st.subheader("🔔 Race Alerts")
             
             # Check for odds changes
@@ -185,20 +197,23 @@ def main():
                 )
                 st.session_state.previous_condition = track_condition
             
-            # Render alerts
-            alert_system.render_alerts()
+            # Render alerts in a grid layout
+            with st.container():
+                st.markdown('<div class="metric-grid">', unsafe_allow_html=True)
+                alert_system.render_alerts()
+                st.markdown('</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         # Form Guide Section
         with st.container():
-            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
             st.subheader("🏇 Race Form Guide")
             render_form_guide(form_data)
             st.markdown('</div>', unsafe_allow_html=True)
 
         # Speed Map Section
         with st.container():
-            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
             st.subheader("🗺️ Speed Map")
             speed_map = create_speed_map(form_data)
             st.plotly_chart(speed_map, use_container_width=True)
@@ -207,7 +222,7 @@ def main():
     with main_col2:
         # Track Bias Section
         with st.container():
-            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
             st.subheader("🎯 Track Bias Analysis")
             track_bias = {
                 'barrier_bias': {},
@@ -221,7 +236,7 @@ def main():
 
         # Alerts Section
         with st.container():
-            st.markdown('<div class="section-card">', unsafe_allow_html=True)
+            st.markdown('<div class="race-info-card">', unsafe_allow_html=True)
             st.subheader("🔔 Recent Alerts")
             alert_system.process_alerts()
             alert_system.render_alerts()

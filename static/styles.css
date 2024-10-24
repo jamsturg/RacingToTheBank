@@ -31,6 +31,32 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
+/* Race info card styling */
+.race-info-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 1rem;
+}
+
+/* Metric grid layout */
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Alert card styling */
+.alert-card {
+    border-left: 4px solid #FFD700;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    background: white;
+    border-radius: 0 8px 8px 0;
+}
+
 /* Metric styling */
 .stMetric {
     background: white !important;
@@ -87,28 +113,6 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
 }
 
-/* Filter section styling */
-.filter-section {
-    background: #F8F9FA !important;
-    padding: 1rem !important;
-    border-radius: 8px !important;
-    margin-bottom: 1rem !important;
-}
-
-/* Add yellow accent for highlights */
-.highlight {
-    background-color: #FFD700 !important;
-    color: #212529 !important;
-}
-
-.confidence-high {
-    color: #1E88E5 !important;
-}
-
-.alert-important {
-    border-left: 4px solid #FFD700 !important;
-}
-
 /* Responsive improvements */
 @media screen and (max-width: 768px) {
     .stApp {
@@ -121,5 +125,9 @@
     
     .dataframe {
         font-size: 0.85rem !important;
+    }
+    
+    .metric-grid {
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     }
 }
