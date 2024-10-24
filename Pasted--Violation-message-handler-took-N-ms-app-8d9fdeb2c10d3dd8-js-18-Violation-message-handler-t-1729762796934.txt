@@ -1,0 +1,32 @@
+[Violation] 'message' handler took <N>ms
+_app-8d9fdeb2c10d3dd8.js:18 [Violation] 'message' handler took 156ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 615ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 562ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 667ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 561ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 479ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 527ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 560ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 455ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'message' handler took 458ms
+6[Violation] 'requestAnimationFrame' handler took <N>ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'requestAnimationFrame' handler took 63ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'requestAnimationFrame' handler took 51ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'requestAnimationFrame' handler took 77ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'requestAnimationFrame' handler took 75ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'requestAnimationFrame' handler took 57ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'requestAnimationFrame' handler took 56ms
+6[Violation] Forced reflow while executing JavaScript took <N>ms
+[Violation] Forced reflow while executing JavaScript took 62ms
+[Violation] Forced reflow while executing JavaScript took 51ms
+[Violation] Forced reflow while executing JavaScript took 77ms
+[Violation] Forced reflow while executing JavaScript took 74ms
+[Violation] Forced reflow while executing JavaScript took 57ms
+[Violation] Forced reflow while executing JavaScript took 55ms
+6[Violation] 'keydown' handler took <N>ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'keydown' handler took 253ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'keydown' handler took 625ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'keydown' handler took 252ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'keydown' handler took 627ms
+_app-8d9fdeb2c10d3dd8.js:16 [Violation] 'keydown' handler took 227ms
+framework-6d65bedbc96ff981.js:1 [Violation] 'keydown' handler took 512ms

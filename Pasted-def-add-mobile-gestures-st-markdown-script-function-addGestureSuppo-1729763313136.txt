@@ -1,0 +1,63 @@
+def add_mobile_gestures():
+    st.markdown("""
+        <script>
+            function addGestureSupport() {
+                let touchStartX = 0;
+                let touchEndX = 0;
+                
+                const gestureAreaLeft = document.createElement('div');
+                gestureAreaLeft.className = 'gesture-area gesture-area-left';
+                
+                const gestureAreaRight = document.createElement('div');
+                gestureAreaRight.className = 'gesture-area gesture-area-right';
+                
+                document.body.appendChild(gestureAreaLeft);
+                document.body.appendChild(gestureAreaRight);
+                
+                function handleGesture(startX, endX) {
+                    const difference = startX - endX;
+                    const threshold = 50;
+                    
+                    if (Math.abs(difference) > threshold) {
+                        if (difference > 0) {
+                            // Swipe left
+                            document.querySelector('[data-testid="stSidebar"]').classList.add('collapsed');
+                        } else {
+                            // Swipe right
+                            document.querySelector('[data-testid="stSidebar"]').classList.remove('collapsed');
+                        }
+                    }
+                }
+                
+                gestureAreaLeft.addEventListener('touchstart', e => {
+                    touchStartX = e.changedTouches[0].screenX;
+                });
+                
+                gestureAreaLeft.addEventListener('touchend', e => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleGesture(touchStartX, touchEndX);
+                });
+                
+                // Add pull-to-refresh
+                let touchStartY = 0;
+                let touchEndY = 0;
+                
+                document.addEventListener('touchstart', e => {
+                    touchStartY = e.touches[0].clientY;
+                });
+                
+                document.addEventListener('touchend', e => {
+                    touchEndY = e.changedTouches[0].clientY;
+                    const difference = touchEndY - touchStartY;
+                    
+                    if (difference > 100 && window.scrollY === 0) {
+                        // Trigger refresh
+                        location.reload();
+                    }
+                });
+            }
+            
+            // Initialize gesture support
+            addGestureSupport();
+        </script>
+    """, unsafe_allow_html=True)

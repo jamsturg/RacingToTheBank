@@ -1,47 +1,143 @@
 import requests
 from config import Config
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import logging
+from datetime import datetime, timedelta
+import time
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 class RacingAPIClient:
     def __init__(self):
         self.api_key = Config.PUNTING_FORM_API_KEY
         self.base_url = 'https://api.puntingform.com.au/v2/form'
         self.setup_logging()
+        self.setup_session()
 
     def setup_logging(self):
+        """Initialize logging configuration"""
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-    def get_meetings(self, date: str = None) -> List[Dict]:
+    def setup_session(self):
+        """Configure requests session with retry logic and proper headers"""
+        self.session = requests.Session()
+        
+        # Configure retry strategy
+        retry_strategy = Retry(
+            total=3,  # Maximum number of retries
+            backoff_factor=0.5,  # Wait 0.5s * (2 ^ (retry - 1)) between retries
+            status_forcelist=[429, 500, 502, 503, 504],  # HTTP status codes to retry on
+            allowed_methods=["GET", "POST"]
+        )
+        
+        # Mount the adapter to the session
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+        
+        # Set default headers
+        self.session.headers.update({
+            'User-Agent': 'RacingAnalysisPlatform/1.0',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.api_key}'
+        })
+
+    def _make_request(self, url: str, params: Dict) -> Optional[Dict]:
+        """Make API request with enhanced error handling and retries"""
+        if not self.api_key:
+            self.logger.error("API key is missing")
+            raise ValueError("API key is required")
+
         try:
+            # Add API key to params
+            params['apiKey'] = self.api_key
+
+            # Make request with timeout
+            response = self.session.get(
+                url,
+                params=params,
+                timeout=(5, 30)  # (connect timeout, read timeout)
+            )
+            
+            response.raise_for_status()  # Raise exception for bad status codes
+            
+            data = response.json()
+            if not data:
+                raise ValueError("Empty response received")
+            return data
+
+        except requests.exceptions.Timeout:
+            self.logger.error("Request timed out")
+            raise TimeoutError("API request timed out")
+        except requests.exceptions.ConnectionError:
+            self.logger.error("Connection error occurred")
+            raise ConnectionError("Failed to connect to API")
+        except requests.exceptions.HTTPError as e:
+            self.logger.error(f"HTTP error occurred: {str(e)}")
+            raise
+        except ValueError as e:
+            self.logger.error(f"Invalid response: {str(e)}")
+            raise
+        except Exception as e:
+            self.logger.error(f"Unexpected error: {str(e)}")
+            raise
+
+    def get_meetings(self, date: Optional[str] = None) -> List[Dict]:
+        """Get race meetings for a specific date with enhanced error handling"""
+        try:
+            if not date:
+                date = datetime.now().strftime("%Y-%m-%d")
+            
             url = f"{self.base_url}/meetingslist"
-            params = {
-                'meetingDate': date,
-                'apiKey': self.api_key
-            }
-            response = requests.get(url, params=params)
-            if response.status_code == 200:
-                data = response.json()
-                return data.get('payLoad', [])
-            else:
-                self.logger.error(f"Error fetching meetings: {response.status_code}")
-                return []
+            params = {'meetingDate': date}
+            
+            self.logger.info(f"Fetching meetings for date: {date}")
+            data = self._make_request(url, params)
+            
+            if isinstance(data, dict) and 'payLoad' in data:
+                meetings = data['payLoad']
+                if isinstance(meetings, list):
+                    self.logger.info(f"Successfully fetched {len(meetings)} meetings")
+                    return meetings
+            
+            raise ValueError("Invalid data format received from API")
+            
         except Exception as e:
             self.logger.error(f"Error fetching meetings: {str(e)}")
-            return []
+            raise
 
     def get_race_data(self, meeting_id: str, race_number: int) -> Optional[Dict]:
-        """Get detailed race data"""
+        """Get detailed race data with enhanced validation and error handling"""
         try:
+            if not meeting_id or not isinstance(race_number, int) or not (1 <= race_number <= 12):
+                raise ValueError("Invalid meeting ID or race number")
+
             url = f"{self.base_url}/form"
             params = {
                 'meetingId': meeting_id,
-                'raceNumber': race_number,
-                'apiKey': self.api_key
+                'raceNumber': race_number
             }
-            response = requests.get(url, params=params)
-            return response.json() if response.status_code == 200 else None
+
+            data = self._make_request(url, params)
+            if isinstance(data, dict):
+                self.logger.info(f"Successfully fetched race data for meeting {meeting_id}, race {race_number}")
+                return data
+
+            raise ValueError("Invalid data format received from API")
+
         except Exception as e:
-            self.logger.error(f"Error getting race data: {str(e)}")
-            return None
+            self.logger.error(f"Error fetching race data: {str(e)}")
+            raise
+
+    def check_api_health(self) -> bool:
+        """Check API health and connectivity with enhanced error handling"""
+        try:
+            url = f"{self.base_url}/meetingslist"
+            params = {'meetingDate': datetime.now().strftime("%Y-%m-%d")}
+            response = self._make_request(url, params)
+            return bool(response and isinstance(response, dict))
+        except Exception as e:
+            self.logger.error(f"Health check failed: {str(e)}")
+            return False
