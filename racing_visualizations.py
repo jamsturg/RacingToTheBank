@@ -3,7 +3,6 @@ import plotly.express as px
 import pandas as pd
 from typing import List, Dict
 import numpy as np
-import networkx as nx
 
 class RacingVisualizations:
     @staticmethod
@@ -96,80 +95,37 @@ class RacingVisualizations:
         return fig
 
     @staticmethod
-    def create_horse_network(self, race_data: Dict):
-        """Create interactive network visualization of horse relationships"""
-        G = nx.Graph()
+    def create_horse_network(race_data: Dict):
+        """Create simple relationship visualization without networkx"""
+        fig = go.Figure()
         
-        # Add nodes for each horse
-        for runner in race_data['runners']:
-            G.add_node(runner['runnerName'], 
-                      type='horse',
-                      odds=runner.get('fixedOdds', {}).get('returnWin', 0))
-            
-            # Add connections to jockey and trainer
-            G.add_node(runner.get('jockey', 'Unknown'), type='jockey')
-            G.add_node(runner.get('trainer', 'Unknown'), type='trainer')
-            
-            G.add_edge(runner['runnerName'], runner.get('jockey', 'Unknown'))
-            G.add_edge(runner['runnerName'], runner.get('trainer', 'Unknown'))
+        # Create nodes for horses
+        horse_x, horse_y = [], []
+        horse_text = []
+        for i, runner in enumerate(race_data['runners']):
+            horse_x.append(0)
+            horse_y.append(i)
+            horse_text.append(runner['runnerName'])
         
-        # Create positions for visualization
-        pos = nx.spring_layout(G)
-        
-        # Create edge trace
-        edge_x = []
-        edge_y = []
-        for edge in G.edges():
-            x0, y0 = pos[edge[0]]
-            x1, y1 = pos[edge[1]]
-            edge_x.extend([x0, x1, None])
-            edge_y.extend([y0, y1, None])
-            
-        edge_trace = go.Scatter(
-            x=edge_x, y=edge_y,
-            line=dict(width=0.5, color='#888'),
-            hoverinfo='none',
-            mode='lines'
-        )
-
-        # Create node trace
-        node_x = []
-        node_y = []
-        node_text = []
-        for node in G.nodes():
-            x, y = pos[node]
-            node_x.append(x)
-            node_y.append(y)
-            node_text.append(node)
-            
-        node_trace = go.Scatter(
-            x=node_x, y=node_y,
+        # Add horse nodes
+        fig.add_trace(go.Scatter(
+            x=horse_x,
+            y=horse_y,
             mode='markers+text',
-            hoverinfo='text',
-            marker=dict(
-                showscale=True,
-                colorscale='YlOrRd',
-                size=20,
-                colorbar=dict(
-                    thickness=15,
-                    title='Odds',
-                    xanchor='left',
-                    titleside='right'
-                )
-            ),
-            text=node_text,
-            textposition="top center"
+            name='Horses',
+            text=horse_text,
+            textposition='middle right',
+            marker=dict(size=15, color='blue')
+        ))
+        
+        fig.update_layout(
+            title="Race Connections",
+            showlegend=True,
+            height=400,
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
         )
-
-        # Create figure
-        fig = go.Figure(data=[edge_trace, node_trace],
-                     layout=go.Layout(
-                         showlegend=False,
-                         hovermode='closest',
-                         margin=dict(b=20,l=5,r=5,t=40),
-                         title="Race Connections Network"
-                     ))
-                     
+        
         return fig
 
     @staticmethod

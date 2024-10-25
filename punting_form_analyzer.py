@@ -1,6 +1,6 @@
 import requests
 import logging
-from datetime import datetime
+from datetime import datetime, date
 import pytz
 from typing import Dict, List, Optional
 import os
@@ -63,6 +63,20 @@ class PuntingFormAPI:
                 "http": proxy_url,
                 "https": proxy_url
             }
+
+    def format_date(self, date_obj) -> Optional[str]:
+        """Format date for API requests with proper timezone handling"""
+        try:
+            if isinstance(date_obj, datetime):
+                return date_obj.strftime("%Y-%m-%d")
+            elif isinstance(date_obj, str):
+                return datetime.strptime(date_obj, "%Y-%m-%d").strftime("%Y-%m-%d")
+            elif isinstance(date_obj, date):
+                return date_obj.strftime("%Y-%m-%d")
+            return datetime.combine(date_obj, datetime.min.time()).strftime("%Y-%m-%d")
+        except Exception as e:
+            logger.error(f"Date formatting error: {str(e)}")
+            return None
 
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict:
         """Make API request with improved error handling"""
@@ -132,20 +146,6 @@ class PuntingFormAPI:
                 return {"error": "Request failed", "details": str(e)}
         
         return {"error": "Request failed after all retries"}
-
-    def format_date(self, date_obj) -> Optional[str]:
-        """Format date for API requests with timezone handling"""
-        try:
-            tz = pytz.timezone('Australia/Sydney')
-            if isinstance(date_obj, datetime):
-                return date_obj.astimezone(tz).strftime("%Y-%m-%d")
-            elif isinstance(date_obj, str):
-                dt = datetime.strptime(date_obj, "%Y-%m-%d")
-                return dt.astimezone(tz).strftime("%Y-%m-%d")
-            return date_obj.astimezone(tz).strftime("%Y-%m-%d")
-        except Exception as e:
-            logger.error(f"Date formatting error: {str(e)}")
-            return None
 
     def get_meetings(self, meeting_date: str, jurisdiction: str) -> Dict:
         """Get race meetings for a specific date"""

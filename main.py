@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, date
 import pytz
 from typing import Dict, List
 import logging
@@ -47,16 +47,17 @@ def initialize_client():
             st.error(f"Failed to initialize client: {str(e)}")
             st.stop()
 
-def format_date(date_obj):
-    """Format date for API requests"""
+def format_date(date_obj) -> str:
+    """Format date for API requests with proper timezone handling"""
     try:
         tz = pytz.timezone('Australia/Sydney')
         if isinstance(date_obj, datetime):
             return date_obj.astimezone(tz).strftime("%Y-%m-%d")
         elif isinstance(date_obj, str):
-            dt = datetime.strptime(date_obj, "%Y-%m-%d")
-            return dt.astimezone(tz).strftime("%Y-%m-%d")
-        return date_obj.astimezone(tz).strftime("%Y-%m-%d")
+            return datetime.strptime(date_obj, "%Y-%m-%d").strftime("%Y-%m-%d")
+        elif isinstance(date_obj, date):
+            return date_obj.strftime("%Y-%m-%d")
+        return datetime.combine(date_obj, datetime.min.time()).astimezone(tz).strftime("%Y-%m-%d")
     except Exception as e:
         logger.error(f"Date formatting error: {str(e)}")
         return None
