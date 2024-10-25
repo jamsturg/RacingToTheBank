@@ -1,10 +1,11 @@
 import streamlit as st
 from datetime import datetime, date
-import pytz
 from typing import Dict, List, Optional
 import logging
 from punting_form_analyzer import PuntingFormAPI
 from account_management import AccountManager
+from utils.date_utils import format_date, format_countdown
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,7 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 def initialize_client():
+    """Initialize API client with proper error handling"""
     if not st.session_state.logged_in:
         return
         
@@ -51,58 +53,22 @@ def initialize_client():
             st.error("Failed to initialize client. Please check your API key.")
             st.stop()
 
-def format_date(date_obj: Optional[datetime | date | str]) -> Optional[str]:
-    """Format date with proper timezone handling"""
-    if not date_obj:
+def handle_api_response(response: Dict) -> Optional[Dict]:
+    """Handle API response with proper error handling"""
+    if isinstance(response, dict):
+        if error := response.get('error'):
+            error_msg = error if isinstance(error, str) else json.dumps(error)
+            st.error(f"API Error: {error_msg}")
+            logger.error(f"API Error: {error_msg}")
+            return None
+        return response
+    else:
+        st.error("Invalid API response format")
+        logger.error(f"Invalid API response format: {type(response)}")
         return None
-        
-    try:
-        tz = pytz.timezone('Australia/Sydney')
-        
-        if isinstance(date_obj, datetime):
-            return date_obj.astimezone(tz).strftime("%Y-%m-%d")
-        elif isinstance(date_obj, str):
-            try:
-                dt = datetime.strptime(date_obj, "%Y-%m-%d")
-                return dt.strftime("%Y-%m-%d")
-            except ValueError:
-                logger.error(f"Invalid date format: {date_obj}")
-                return None
-        elif isinstance(date_obj, date):
-            return date_obj.strftime("%Y-%m-%d")
-            
-        return None
-    except Exception as e:
-        logger.error(f"Date formatting error: {str(e)}")
-        return None
-
-def format_countdown(start_time: Optional[str]) -> str:
-    """Format countdown timer"""
-    if not start_time:
-        return "N/A"
-        
-    try:
-        tz = pytz.timezone('Australia/Sydney')
-        race_time = datetime.strptime(start_time, "%Y-%m-%d")
-        race_time = race_time.replace(tzinfo=tz)
-        now = datetime.now(tz)
-        delta = race_time - now
-        
-        if delta.total_seconds() < 0:
-            return "Started"
-        
-        minutes = delta.seconds // 60
-        if minutes < 60:
-            return f"{minutes}m"
-        else:
-            hours = minutes // 60
-            return f"{hours}h {minutes % 60}m"
-    except Exception as e:
-        logger.error(f"Error formatting countdown: {str(e)}")
-        return "N/A"
 
 def render_race_list(race_type: str):
-    """Render list of upcoming races"""
+    """Render list of upcoming races with improved error handling"""
     if not st.session_state.logged_in:
         return
         
@@ -113,34 +79,35 @@ def render_race_list(race_type: str):
                 limit=5
             )
             
-            if isinstance(races, dict):
-                if error := races.get('error'):
-                    st.error(f"Error loading races: {error}")
-                    return
-                    
-                if not (race_list := races.get('races', [])):
-                    st.info("No upcoming races found")
-                    return
-                    
-                for idx, race in enumerate(race_list):
-                    if race.get('raceType') == race_type:
-                        with st.container():
-                            col1, col2, col3 = st.columns([3, 2, 1])
-                            with col1:
-                                st.write(f"R{race.get('raceNumber')} {race.get('venueName', 'Unknown')}")
-                            with col2:
-                                start_time = format_date(race.get('startTime'))
-                                countdown = format_countdown(start_time)
-                                st.write(countdown)
-                            with col3:
-                                if st.button("View", key=f"view_{race_type}_{idx}"):
-                                    st.session_state.selected_race = race
-            else:
-                st.error("Invalid API response format")
+            races = handle_api_response(races)
+            if not races:
+                return
+                
+            if not (race_list := races.get('races', [])):
+                st.info("No upcoming races found")
+                return
+                
+            for idx, race in enumerate(race_list):
+                if race.get('raceType') == race_type:
+                    with st.container():
+                        col1, col2, col3 = st.columns([3, 2, 1])
+                        with col1:
+                            st.write(f"R{race.get('raceNumber')} {race.get('venueName', 'Unknown')}")
+                        with col2:
+                            start_time = format_date(race.get('startTime'), include_time=True)
+                            countdown = format_countdown(start_time)
+                            st.write(countdown)
+                        with col3:
+                            if st.button("View", key=f"view_{race_type}_{idx}"):
+                                st.session_state.selected_race = race
                 
         except Exception as e:
             logger.error(f"Error loading races: {str(e)}")
             st.error("Unable to load races. Please try again later.")
+            if st.session_state.client:
+                # Attempt to reinitialize client on error
+                st.session_state.client = None
+                initialize_client()
 
 def render_next_to_jump():
     """Render Next To Jump section with tabs"""

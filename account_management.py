@@ -3,17 +3,13 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from decimal import Decimal
 import pandas as pd
-from dataclasses import dataclass
 import plotly.graph_objects as go
+import logging
+from tab_api_client import TABApiClient, APIError
 
-@dataclass
-class Account:
-    user_id: str
-    username: str
-    balance: Decimal
-    pending_bets: List[Dict]
-    bet_history: List[Dict]
-    preferences: Dict
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class AccountManager:
     def __init__(self):
@@ -21,28 +17,61 @@ class AccountManager:
             st.session_state.account = None
         if 'logged_in' not in st.session_state:
             st.session_state.logged_in = False
+        if 'bearer_token' not in st.session_state:
+            st.session_state.bearer_token = None
 
     def _validate_login(self, username: str, password: str) -> bool:
-        """Validate login credentials"""
-        # For demo, use simple validation
-        return bool(username and password)
+        """Validate login credentials using TAB API"""
+        try:
+            client = TABApiClient()
+            response = client.session.post(
+                f"{client.base_url}/auth/login",
+                json={
+                    "username": username,
+                    "password": password
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                st.session_state.bearer_token = data.get('token')
+                return True
+            
+            logger.error(f"Login failed with status code: {response.status_code}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Login error: {str(e)}")
+            return False
 
-    def _load_account(self, username: str) -> Account:
-        """Load account data for the given username"""
-        # For demo, return mock account data
-        return Account(
-            user_id="12345",
-            username=username,
-            balance=Decimal("1000.00"),
-            pending_bets=[],
-            bet_history=[],
-            preferences={
-                'default_stake': 10.0,
-                'default_bet_type': 'Win',
-                'odds_format': 'Decimal',
-                'timezone': 'AEST'
+    def _load_account(self, username: str) -> Dict:
+        """Load account details from TAB API"""
+        if not st.session_state.bearer_token:
+            raise ValueError("No bearer token available")
+            
+        try:
+            client = TABApiClient(st.session_state.bearer_token)
+            
+            # Get account info
+            account_info = client.get_account_balance()
+            pending_bets = client.get_pending_bets()
+            bet_history = client.get_bet_history()
+            
+            return {
+                'user_id': account_info.get('accountId', ''),
+                'username': username,
+                'balance': Decimal(str(account_info.get('balance', 0))),
+                'pending_bets': pending_bets.get('bets', []),
+                'bet_history': bet_history.get('bets', []),
+                'preferences': account_info.get('preferences', {})
             }
-        )
+            
+        except APIError as e:
+            logger.error(f"Failed to load account: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error loading account: {str(e)}")
+            raise
 
     def render_login(self):
         """Render login interface"""
@@ -55,10 +84,14 @@ class AccountManager:
                 
                 if submit:
                     if self._validate_login(username, password):
-                        st.session_state.logged_in = True
-                        st.session_state.account = self._load_account(username)
-                        st.success("Logged in successfully!")
-                        st.rerun()
+                        try:
+                            account_data = self._load_account(username)
+                            st.session_state.logged_in = True
+                            st.session_state.account = account_data
+                            st.success("Logged in successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to load account: {str(e)}")
                     else:
                         st.error("Invalid credentials")
         else:
@@ -66,22 +99,19 @@ class AccountManager:
 
     def render_account_summary(self):
         """Render account summary"""
-        account = st.session_state.account
-        
+        if not st.session_state.account:
+            return
+            
         st.sidebar.subheader("Account")
-        st.sidebar.metric("Balance", f"${account.balance:,.2f}")
+        st.sidebar.metric("Balance", f"${st.session_state.account['balance']:,.2f}")
         
         # Quick stats
         cols = st.sidebar.columns(2)
         with cols[0]:
-            st.metric("Pending Bets", len(account.pending_bets))
+            st.metric("Pending Bets", len(st.session_state.account['pending_bets']))
         with cols[1]:
             today_pl = self._calculate_daily_pl()
-            st.metric(
-                "Today's P/L",
-                f"${today_pl:,.2f}",
-                delta=f"{today_pl:,.2f}"
-            )
+            st.metric("Today's P/L", f"${today_pl:,.2f}", delta=f"{today_pl:,.2f}")
         
         # Account actions
         if st.sidebar.button("Deposit"):
@@ -93,19 +123,32 @@ class AccountManager:
 
     def _calculate_daily_pl(self) -> float:
         """Calculate daily profit/loss"""
-        # For demo, return mock value
-        return 150.00
+        if not st.session_state.account:
+            return 0.0
+            
+        try:
+            client = TABApiClient(st.session_state.bearer_token)
+            today = datetime.now().strftime("%Y-%m-%d")
+            
+            # Get today's bet history
+            history = client.get_bet_history(start_date=today, end_date=today)
+            return sum(bet.get('profit', 0) for bet in history.get('bets', []))
+            
+        except Exception as e:
+            logger.error(f"Error calculating P/L: {str(e)}")
+            return 0.0
 
     def logout(self):
         """Log out current user"""
         st.session_state.logged_in = False
         st.session_state.account = None
+        st.session_state.bearer_token = None
         st.rerun()
 
     def render_deposit_dialog(self):
         """Render deposit interface"""
-        st.sidebar.write("Deposit functionality coming soon")
+        st.sidebar.info("Deposit functionality coming soon")
 
     def render_withdraw_dialog(self):
         """Render withdraw interface"""
-        st.sidebar.write("Withdraw functionality coming soon")
+        st.sidebar.info("Withdraw functionality coming soon")
