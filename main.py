@@ -5,7 +5,6 @@ from typing import Dict, List, Optional
 import logging
 from punting_form_analyzer import PuntingFormAPI
 from account_management import AccountManager
-from betting_system_integration import BettingSystemIntegration
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,9 +30,13 @@ if 'active_tab' not in st.session_state:
     st.session_state.active_tab = "Racing"
 if 'betslip' not in st.session_state:
     st.session_state.betslip = []
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
 
 def initialize_client():
-    """Initialize Punting Form API client"""
+    if not st.session_state.logged_in:
+        return
+        
     if st.session_state.client is None:
         try:
             api_key = st.secrets["punting_form"]["api_key"]
@@ -45,7 +48,7 @@ def initialize_client():
             logger.info("API client initialized successfully")
         except Exception as e:
             logger.error(f"Client initialization error: {str(e)}")
-            st.error(f"Failed to initialize client: {str(e)}")
+            st.error("Failed to initialize client. Please check your API key.")
             st.stop()
 
 def format_date(date_obj: Optional[datetime | date | str]) -> Optional[str]:
@@ -57,21 +60,16 @@ def format_date(date_obj: Optional[datetime | date | str]) -> Optional[str]:
         tz = pytz.timezone('Australia/Sydney')
         
         if isinstance(date_obj, datetime):
-            return date_obj.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
+            return date_obj.astimezone(tz).strftime("%Y-%m-%d")
         elif isinstance(date_obj, str):
             try:
                 dt = datetime.strptime(date_obj, "%Y-%m-%d")
-                return dt.replace(tzinfo=tz).strftime("%Y-%m-%d %H:%M:%S")
+                return dt.strftime("%Y-%m-%d")
             except ValueError:
-                try:
-                    dt = datetime.strptime(date_obj, "%Y-%m-%dT%H:%M:%S%z")
-                    return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    logger.error(f"Invalid date format: {date_obj}")
-                    return None
+                logger.error(f"Invalid date format: {date_obj}")
+                return None
         elif isinstance(date_obj, date):
-            dt = datetime.combine(date_obj, datetime.min.time())
-            return dt.replace(tzinfo=tz).strftime("%Y-%m-%d %H:%M:%S")
+            return date_obj.strftime("%Y-%m-%d")
             
         return None
     except Exception as e:
@@ -84,8 +82,10 @@ def format_countdown(start_time: Optional[str]) -> str:
         return "N/A"
         
     try:
-        race_time = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
-        now = datetime.now(pytz.timezone('Australia/Sydney'))
+        tz = pytz.timezone('Australia/Sydney')
+        race_time = datetime.strptime(start_time, "%Y-%m-%d")
+        race_time = race_time.replace(tzinfo=tz)
+        now = datetime.now(tz)
         delta = race_time - now
         
         if delta.total_seconds() < 0:
@@ -103,6 +103,9 @@ def format_countdown(start_time: Optional[str]) -> str:
 
 def render_race_list(race_type: str):
     """Render list of upcoming races"""
+    if not st.session_state.logged_in:
+        return
+        
     with st.spinner("Loading races..."):
         try:
             races = st.session_state.client.get_next_races(
@@ -111,29 +114,29 @@ def render_race_list(race_type: str):
             )
             
             if isinstance(races, dict):
-                if races.get('error'):
-                    st.error(f"Error loading races: {races['error']}")
+                if error := races.get('error'):
+                    st.error(f"Error loading races: {error}")
                     return
                     
-                race_list = races.get('races', [])
-                if race_list:
-                    for idx, race in enumerate(race_list):
-                        if race.get('raceType') == race_type:
-                            with st.container():
-                                col1, col2, col3 = st.columns([3, 2, 1])
-                                with col1:
-                                    st.write(f"R{race.get('raceNumber')} {race.get('venueName', 'Unknown')}")
-                                with col2:
-                                    start_time = format_date(race.get('startTime'))
-                                    countdown = format_countdown(start_time)
-                                    st.write(countdown)
-                                with col3:
-                                    if st.button("View", key=f"view_{race_type}_{idx}"):
-                                        st.session_state.selected_race = race
-                else:
-                    st.info("No upcoming races")
+                if not (race_list := races.get('races', [])):
+                    st.info("No upcoming races found")
+                    return
+                    
+                for idx, race in enumerate(race_list):
+                    if race.get('raceType') == race_type:
+                        with st.container():
+                            col1, col2, col3 = st.columns([3, 2, 1])
+                            with col1:
+                                st.write(f"R{race.get('raceNumber')} {race.get('venueName', 'Unknown')}")
+                            with col2:
+                                start_time = format_date(race.get('startTime'))
+                                countdown = format_countdown(start_time)
+                                st.write(countdown)
+                            with col3:
+                                if st.button("View", key=f"view_{race_type}_{idx}"):
+                                    st.session_state.selected_race = race
             else:
-                st.error("Invalid response format from API")
+                st.error("Invalid API response format")
                 
         except Exception as e:
             logger.error(f"Error loading races: {str(e)}")
@@ -155,24 +158,23 @@ def render_next_to_jump():
         render_race_list("H")  # Harness races
 
 def main():
-    initialize_client()
-    
-    # Initialize components
+    # Initialize account manager first
     account_manager = AccountManager()
-    betting_integration = BettingSystemIntegration()
     
-    # Render login/account
+    # Show login form and require login before proceeding
     account_manager.render_login()
     
-    # Main content
-    if st.session_state.active_tab == "Racing":
-        col1, col2 = st.columns([7, 3])
+    # Only proceed with API initialization and content if logged in
+    if st.session_state.logged_in:
+        initialize_client()
         
-        with col1:
+        # Main content
+        st.title("🏇 Racing Analysis Platform")
+        
+        if st.session_state.active_tab == "Racing":
             render_next_to_jump()
-        
-        with col2:
-            betting_integration.render_betting_interface()
+    else:
+        st.info("Please log in to access racing information")
 
 if __name__ == "__main__":
     main()

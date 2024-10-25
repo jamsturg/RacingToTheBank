@@ -91,29 +91,20 @@ class PuntingFormAPI:
             return {"error": f"Unexpected error: {str(e)}"}
 
     def format_date(self, date_obj: Optional[datetime | date | str]) -> Optional[str]:
-        """Format date with proper timezone handling"""
-        if not date_obj:
-            return None
-            
         try:
             tz = pytz.timezone('Australia/Sydney')
             
             if isinstance(date_obj, datetime):
-                return date_obj.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
+                return date_obj.astimezone(tz).strftime("%Y-%m-%d")
             elif isinstance(date_obj, str):
                 try:
                     dt = datetime.strptime(date_obj, "%Y-%m-%d")
-                    return dt.replace(tzinfo=tz).strftime("%Y-%m-%d %H:%M:%S")
+                    return dt.strftime("%Y-%m-%d")
                 except ValueError:
-                    try:
-                        dt = datetime.strptime(date_obj, "%Y-%m-%dT%H:%M:%S%z")
-                        return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
-                    except ValueError:
-                        logger.error(f"Invalid date format: {date_obj}")
-                        return None
+                    logger.error(f"Invalid date format: {date_obj}")
+                    return None
             elif isinstance(date_obj, date):
-                dt = datetime.combine(date_obj, datetime.min.time())
-                return dt.replace(tzinfo=tz).strftime("%Y-%m-%d %H:%M:%S")
+                return date_obj.strftime("%Y-%m-%d")
                 
             return None
         except Exception as e:
