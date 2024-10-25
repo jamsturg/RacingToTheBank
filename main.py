@@ -17,8 +17,18 @@ st.set_page_config(
     page_title="Racing Analysis Platform",
     page_icon="🏇",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'About': 'Racing Analysis Platform'
+    }
 )
+
+# Add proper DOCTYPE and meta tags
+st.markdown('''
+    <!DOCTYPE html>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+''', unsafe_allow_html=True)
 
 # Initialize session state
 if 'client' not in st.session_state:
@@ -29,6 +39,8 @@ if 'active_tab' not in st.session_state:
     st.session_state.active_tab = "Racing"
 if 'betslip' not in st.session_state:
     st.session_state.betslip = []
+if 'cookie_consent' not in st.session_state:
+    st.session_state.cookie_consent = False
 
 def initialize_client():
     """Initialize Punting Form API client"""
@@ -50,7 +62,7 @@ def render_header():
     col1, col2, col3 = st.columns([2, 6, 2])
     
     with col1:
-        st.text_input("Search...", placeholder="Search races, runners...")
+        st.text_input("Search...", placeholder="Search races, runners...", key="search_input")
     
     with col2:
         tab1, tab2 = st.tabs(["Racing", "Sports"])
@@ -60,34 +72,39 @@ def render_header():
             st.session_state.active_tab = "Sports"
     
     with col3:
-        st.empty()  # Reserved for notifications/user menu
+        if not st.session_state.cookie_consent:
+            if st.button("Accept Cookies", key="cookie_consent_button"):
+                st.session_state.cookie_consent = True
+                st.rerun()
 
 def render_navigation():
     """Render sidebar navigation"""
     st.sidebar.title("Navigation")
-    if st.sidebar.button("🏠 Home"):
+    if st.sidebar.button("🏠 Home", key="nav_home"):
         st.session_state.page = "home"
-    if st.sidebar.button("🎁 Promotions"):
+    if st.sidebar.button("🎁 Promotions", key="nav_promotions"):
         st.session_state.page = "promotions"
-    if st.sidebar.button("🏇 Today's Racing"):
+    if st.sidebar.button("🏇 Today's Racing", key="nav_today"):
         st.session_state.page = "today"
-    if st.sidebar.button("📅 All Racing"):
+    if st.sidebar.button("📅 All Racing", key="nav_all"):
         st.session_state.page = "all"
 
-def render_next_to_jump():
-    """Render Next To Jump section with tabs"""
-    st.subheader("Next To Jump")
-    
-    tab1, tab2, tab3 = st.tabs(["Horses", "Greyhounds", "Harness"])
-    
-    with tab1:
-        render_race_list("R")  # Thoroughbred races
-    
-    with tab2:
-        render_race_list("G")  # Greyhound races
-    
-    with tab3:
-        render_race_list("H")  # Harness races
+def format_date(date_obj) -> str:
+    """Format date with proper timezone handling"""
+    try:
+        tz = pytz.timezone('Australia/Sydney')
+        if isinstance(date_obj, datetime):
+            return date_obj.astimezone(tz).strftime("%Y-%m-%dT%H:%M:%S%z")
+        elif isinstance(date_obj, str):
+            dt = datetime.strptime(date_obj, "%Y-%m-%d")
+            return dt.replace(tzinfo=tz).strftime("%Y-%m-%dT%H:%M:%S%z")
+        elif isinstance(date_obj, date):
+            dt = datetime.combine(date_obj, datetime.min.time())
+            return dt.replace(tzinfo=tz).strftime("%Y-%m-%dT%H:%M:%S%z")
+        return None
+    except Exception as e:
+        logger.error(f"Date formatting error: {str(e)}")
+        return None
 
 def render_race_list(race_type: str):
     """Render list of upcoming races"""
@@ -98,7 +115,7 @@ def render_race_list(race_type: str):
         )
         
         if races and not races.get('error'):
-            for race in races.get('races', []):
+            for idx, race in enumerate(races.get('races', [])):
                 with st.container():
                     col1, col2, col3 = st.columns([3, 2, 1])
                     with col1:
@@ -107,7 +124,7 @@ def render_race_list(race_type: str):
                         countdown = format_countdown(race.get('startTime'))
                         st.write(countdown)
                     with col3:
-                        if st.button("View", key=f"view_{race.get('id', '')}"):
+                        if st.button("View", key=f"view_race_{race_type}_{idx}_{race.get('id', '')}"):
                             st.session_state.selected_race = race
         else:
             st.info("No upcoming races")
@@ -146,12 +163,14 @@ def render_quick_multi():
     if not st.session_state.get('multi_selections', []):
         st.write("Select runners to create a multi bet")
     else:
-        for selection in st.session_state.multi_selections:
+        for idx, selection in enumerate(st.session_state.multi_selections):
             st.write(f"{selection['runner']} @ {selection['odds']}")
+            if st.button("Remove", key=f"remove_multi_{idx}"):
+                st.session_state.multi_selections.pop(idx)
+                st.rerun()
         
-        stake = st.number_input("Stake ($)", min_value=1.0, value=10.0)
-        if st.button("Add to Betslip"):
-            # Add multi bet to betslip
+        stake = st.number_input("Stake ($)", min_value=1.0, value=10.0, key="multi_stake")
+        if st.button("Add to Betslip", key="add_multi_to_betslip"):
             pass
 
 def render_betslip():
@@ -165,12 +184,12 @@ def render_betslip():
             total_stake = 0
             total_return = 0
             
-            for bet in st.session_state.betslip:
+            for idx, bet in enumerate(st.session_state.betslip):
                 with st.container():
                     st.write(f"{bet['runner']} - {bet['odds']}")
                     st.write(f"Stake: ${bet['stake']:.2f}")
-                    if st.button("Remove", key=f"remove_{bet['id']}"):
-                        st.session_state.betslip.remove(bet)
+                    if st.button("Remove", key=f"remove_bet_{idx}"):
+                        st.session_state.betslip.pop(idx)
                         st.rerun()
                     
                     total_stake += bet['stake']
@@ -179,6 +198,21 @@ def render_betslip():
             st.write("---")
             st.write(f"Total Stake: ${total_stake:.2f}")
             st.write(f"Potential Return: ${total_return:.2f}")
+
+def render_next_to_jump():
+    """Render Next To Jump section with tabs"""
+    st.subheader("Next To Jump")
+    
+    tab1, tab2, tab3 = st.tabs(["Horses", "Greyhounds", "Harness"])
+    
+    with tab1:
+        render_race_list("R")  # Thoroughbred races
+    
+    with tab2:
+        render_race_list("G")  # Greyhound races
+    
+    with tab3:
+        render_race_list("H")  # Harness races
 
 def main():
     initialize_client()
