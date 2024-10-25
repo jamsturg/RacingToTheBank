@@ -3,8 +3,6 @@ from datetime import datetime, date
 import pytz
 from typing import Dict, List
 import logging
-import time
-import requests
 from punting_form_analyzer import PuntingFormAPI
 from account_management import AccountManager
 from betting_system_integration import BettingSystemIntegration
@@ -27,190 +25,186 @@ if 'client' not in st.session_state:
     st.session_state.client = None
 if 'selected_race' not in st.session_state:
     st.session_state.selected_race = None
-if 'last_error' not in st.session_state:
-    st.session_state.last_error = None
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "Racing"
+if 'betslip' not in st.session_state:
+    st.session_state.betslip = []
 
 def initialize_client():
     """Initialize Punting Form API client"""
     if st.session_state.client is None:
         try:
-            # Get API key from secrets
             api_key = st.secrets["punting_form"]["api_key"]
             if not api_key:
                 st.error("Missing Punting Form API key")
                 st.stop()
             
             st.session_state.client = PuntingFormAPI(api_key)
-            st.session_state.last_error = None
         except Exception as e:
             logger.error(f"Client initialization error: {str(e)}")
             st.error(f"Failed to initialize client: {str(e)}")
             st.stop()
 
-def format_date(date_obj) -> str:
-    """Format date for API requests with proper timezone handling"""
+def render_header():
+    """Render page header with search and Racing/Sports toggle"""
+    col1, col2, col3 = st.columns([2, 6, 2])
+    
+    with col1:
+        st.text_input("Search...", placeholder="Search races, runners...")
+    
+    with col2:
+        tab1, tab2 = st.tabs(["Racing", "Sports"])
+        if tab1:
+            st.session_state.active_tab = "Racing"
+        elif tab2:
+            st.session_state.active_tab = "Sports"
+    
+    with col3:
+        st.empty()  # Reserved for notifications/user menu
+
+def render_navigation():
+    """Render sidebar navigation"""
+    st.sidebar.title("Navigation")
+    if st.sidebar.button("🏠 Home"):
+        st.session_state.page = "home"
+    if st.sidebar.button("🎁 Promotions"):
+        st.session_state.page = "promotions"
+    if st.sidebar.button("🏇 Today's Racing"):
+        st.session_state.page = "today"
+    if st.sidebar.button("📅 All Racing"):
+        st.session_state.page = "all"
+
+def render_next_to_jump():
+    """Render Next To Jump section with tabs"""
+    st.subheader("Next To Jump")
+    
+    tab1, tab2, tab3 = st.tabs(["Horses", "Greyhounds", "Harness"])
+    
+    with tab1:
+        render_race_list("R")  # Thoroughbred races
+    
+    with tab2:
+        render_race_list("G")  # Greyhound races
+    
+    with tab3:
+        render_race_list("H")  # Harness races
+
+def render_race_list(race_type: str):
+    """Render list of upcoming races"""
     try:
-        tz = pytz.timezone('Australia/Sydney')
-        if isinstance(date_obj, datetime):
-            return date_obj.astimezone(tz).strftime("%Y-%m-%d")
-        elif isinstance(date_obj, str):
-            return datetime.strptime(date_obj, "%Y-%m-%d").strftime("%Y-%m-%d")
-        elif isinstance(date_obj, date):
-            return date_obj.strftime("%Y-%m-%d")
-        return datetime.combine(date_obj, datetime.min.time()).astimezone(tz).strftime("%Y-%m-%d")
+        races = st.session_state.client.get_next_races(
+            jurisdiction="NSW",
+            limit=5
+        )
+        
+        if races and not races.get('error'):
+            for race in races.get('races', []):
+                with st.container():
+                    col1, col2, col3 = st.columns([3, 2, 1])
+                    with col1:
+                        st.write(f"R{race['raceNumber']} {race['venueName']}")
+                    with col2:
+                        countdown = format_countdown(race.get('startTime'))
+                        st.write(countdown)
+                    with col3:
+                        if st.button("View", key=f"view_{race.get('id', '')}"):
+                            st.session_state.selected_race = race
+        else:
+            st.info("No upcoming races")
+            
     except Exception as e:
-        logger.error(f"Date formatting error: {str(e)}")
-        return None
+        logger.error(f"Error loading races: {str(e)}")
+        st.error("Unable to load races. Please try again later.")
 
-def handle_api_request(func, *args, **kwargs):
-    """Generic API request handler with improved error handling"""
-    with st.spinner("Loading data..."):
-        try:
-            for attempt in range(3):
-                try:
-                    response = func(*args, **kwargs)
-                    if isinstance(response, dict) and 'error' in response:
-                        if attempt < 2:
-                            time.sleep(1)
-                            continue
-                        st.error(f"API Error: {response['error']}")
-                        return None
-                    return response
-                except requests.exceptions.SSLError:
-                    if attempt < 2:
-                        time.sleep(1)
-                        continue
-                    st.error("SSL verification failed. Retrying with alternative configuration...")
-                    return None
-                except requests.exceptions.ConnectionError:
-                    if attempt < 2:
-                        time.sleep(1)
-                        continue
-                    st.error("Connection failed. Please check your internet connection.")
-                    return None
-        except Exception as e:
-            logger.error(f"Request failed: {str(e)}")
-            st.error(f"An error occurred: {str(e)}")
-            return None
+def format_countdown(start_time: str) -> str:
+    """Format countdown timer"""
+    try:
+        if not start_time:
+            return "N/A"
+            
+        race_time = datetime.strptime(start_time, "%Y-%m-%dT%H:%M:%S%z")
+        now = datetime.now(pytz.UTC)
+        delta = race_time - now
+        
+        if delta.total_seconds() < 0:
+            return "Started"
+        
+        minutes = delta.seconds // 60
+        if minutes < 60:
+            return f"{minutes}m"
+        else:
+            hours = minutes // 60
+            return f"{hours}h {minutes % 60}m"
+    except Exception as e:
+        logger.error(f"Error formatting countdown: {str(e)}")
+        return "N/A"
 
-def format_meeting_name(meeting: Dict) -> str:
-    """Format meeting name for display"""
-    venue = meeting.get('venue_name', '')
-    track = meeting.get('track_condition', '')
-    return f"{venue} ({track})" if track else venue
+def render_quick_multi():
+    """Render Quick Multi section"""
+    st.subheader("Quick Multi")
+    
+    if not st.session_state.get('multi_selections', []):
+        st.write("Select runners to create a multi bet")
+    else:
+        for selection in st.session_state.multi_selections:
+            st.write(f"{selection['runner']} @ {selection['odds']}")
+        
+        stake = st.number_input("Stake ($)", min_value=1.0, value=10.0)
+        if st.button("Add to Betslip"):
+            # Add multi bet to betslip
+            pass
 
-def format_race_name(race: Dict) -> str:
-    """Format race name for display"""
-    number = race.get('number', '')
-    name = race.get('name', '')
-    distance = race.get('distance', '')
-    return f"Race {number} - {name} ({distance}m)" if distance else f"Race {number} - {name}"
+def render_betslip():
+    """Render betslip"""
+    with st.sidebar:
+        st.subheader("Betslip")
+        if not st.session_state.betslip:
+            st.write("Your bet slip is empty")
+            st.write("Make a selection from our betting markets to see them appear here")
+        else:
+            total_stake = 0
+            total_return = 0
+            
+            for bet in st.session_state.betslip:
+                with st.container():
+                    st.write(f"{bet['runner']} - {bet['odds']}")
+                    st.write(f"Stake: ${bet['stake']:.2f}")
+                    if st.button("Remove", key=f"remove_{bet['id']}"):
+                        st.session_state.betslip.remove(bet)
+                        st.rerun()
+                    
+                    total_stake += bet['stake']
+                    total_return += bet['stake'] * float(bet['odds'].replace('$', ''))
+            
+            st.write("---")
+            st.write(f"Total Stake: ${total_stake:.2f}")
+            st.write(f"Potential Return: ${total_return:.2f}")
 
 def main():
-    st.title("🏇 Racing Analysis Platform")
+    initialize_client()
     
     # Initialize components
-    initialize_client()
     account_manager = AccountManager()
-    betting_system = BettingSystemIntegration()
-    race_info = RaceInformation(st.session_state.client)
     
-    # Sidebar - Account Management
+    # Render header
+    render_header()
+    
+    # Render navigation
+    render_navigation()
+    
+    # Render login/account
     account_manager.render_login()
     
-    # Main navigation
-    tabs = st.tabs([
-        "Race Analysis",
-        "Automated Betting",
-        "Performance Analytics"
-    ])
-    
-    with tabs[0]:
-        # Race selection
-        col1, col2 = st.columns(2)
-        with col1:
-            meeting_date = st.date_input(
-                "Meeting Date",
-                value=datetime.now(pytz.timezone('Australia/Sydney')).date(),
-                min_value=datetime.now(pytz.timezone('Australia/Sydney')).date(),
-                help="Select a date to view race meetings"
-            )
-        with col2:
-            jurisdiction = st.selectbox(
-                "Jurisdiction",
-                ["NSW", "VIC", "QLD", "SA", "WA", "TAS", "NT", "ACT"],
-                help="Select a racing jurisdiction"
-            )
+    # Main content
+    if st.session_state.active_tab == "Racing":
+        col1, col2 = st.columns([7, 3])
         
-        # Fetch and display races
-        if meeting_date and jurisdiction:
-            formatted_date = format_date(meeting_date)
-            if formatted_date:
-                meetings_response = handle_api_request(
-                    st.session_state.client.get_meetings,
-                    meeting_date=formatted_date,
-                    jurisdiction=jurisdiction
-                )
-                
-                if meetings_response and 'meetings' in meetings_response:
-                    meetings = meetings_response['meetings']
-                    if meetings:
-                        selected_meeting = st.selectbox(
-                            "Select Meeting",
-                            options=meetings,
-                            format_func=format_meeting_name,
-                            help="Select a race meeting"
-                        )
-                        
-                        if selected_meeting:
-                            try:
-                                races_response = handle_api_request(
-                                    st.session_state.client.get_races_in_meeting,
-                                    meeting_date=formatted_date,
-                                    meeting_id=selected_meeting['id'],
-                                    jurisdiction=jurisdiction
-                                )
-                                
-                                if races_response and 'races' in races_response:
-                                    races = races_response['races']
-                                    if races:
-                                        selected_race = st.selectbox(
-                                            "Select Race",
-                                            options=races,
-                                            format_func=format_race_name,
-                                            help="Select a race to analyze"
-                                        )
-                                        
-                                        if selected_race:
-                                            try:
-                                                race_fields = handle_api_request(
-                                                    st.session_state.client.get_race_fields,
-                                                    race_id=selected_race['id'],
-                                                    include_form=True
-                                                )
-                                                if race_fields and not race_fields.get('error'):
-                                                    race_info.render_race_overview(race_fields)
-                                                else:
-                                                    st.error("Failed to load race fields. Please try again.")
-                                            except Exception as e:
-                                                logger.error(f"Error loading race fields: {str(e)}")
-                                                st.error("An error occurred while loading race data. Please try again.")
-                                    else:
-                                        st.info("No races available for this meeting")
-                            except Exception as e:
-                                logger.error(f"Error loading races: {str(e)}")
-                                st.error("Failed to load races. Please try again.")
-                    else:
-                        st.info("No meetings available for the selected date and jurisdiction")
-    
-    with tabs[1]:
-        # Automated betting interface
-        betting_system.render_betting_interface()
-    
-    with tabs[2]:
-        # Performance analytics
-        st.header("Performance Analytics")
-        betting_system.betting_system.render_dashboard()
+        with col1:
+            render_next_to_jump()
+            render_quick_multi()
+        
+        with col2:
+            render_betslip()
 
 if __name__ == "__main__":
     main()
