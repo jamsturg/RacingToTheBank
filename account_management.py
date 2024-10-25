@@ -23,8 +23,9 @@ class AccountManager:
             st.session_state.logged_in = False
 
     def _validate_login(self, username: str, password: str) -> bool:
+        """Validate login credentials"""
         # For demo, use simple validation
-        return username and password
+        return bool(username and password)
 
     def _load_account(self, username: str) -> Account:
         """Load account data for the given username"""
@@ -48,10 +49,11 @@ class AccountManager:
         if not st.session_state.logged_in:
             st.sidebar.title("Login")
             with st.sidebar.form("login_form", clear_on_submit=True):
-                username = st.text_input("Username", key="login_username")
-                password = st.text_input("Password", type="password", key="login_password")
+                username = st.text_input("Username")
+                password = st.text_input("Password", type="password")
+                submit = st.form_submit_button("Login")
                 
-                if st.form_submit_button("Login", key="login_submit"):
+                if submit:
                     if self._validate_login(username, password):
                         st.session_state.logged_in = True
                         st.session_state.account = self._load_account(username)
@@ -67,31 +69,26 @@ class AccountManager:
         account = st.session_state.account
         
         st.sidebar.subheader("Account")
-        st.sidebar.metric("Balance", f"${account.balance:,.2f}", key="account_balance")
+        st.sidebar.metric("Balance", f"${account.balance:,.2f}")
         
         # Quick stats
         cols = st.sidebar.columns(2)
         with cols[0]:
-            st.metric(
-                "Pending Bets",
-                len(account.pending_bets),
-                key="pending_bets_count"
-            )
+            st.metric("Pending Bets", len(account.pending_bets))
         with cols[1]:
             today_pl = self._calculate_daily_pl()
             st.metric(
                 "Today's P/L",
                 f"${today_pl:,.2f}",
-                delta=f"{today_pl:,.2f}",
-                key="daily_pl"
+                delta=f"{today_pl:,.2f}"
             )
         
         # Account actions
-        if st.sidebar.button("Deposit", key="deposit_button"):
+        if st.sidebar.button("Deposit"):
             self.render_deposit_dialog()
-        if st.sidebar.button("Withdraw", key="withdraw_button"):
+        if st.sidebar.button("Withdraw"):
             self.render_withdraw_dialog()
-        if st.sidebar.button("Logout", key="logout_button"):
+        if st.sidebar.button("Logout"):
             self.logout()
 
     def _calculate_daily_pl(self) -> float:

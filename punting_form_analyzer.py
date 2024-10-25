@@ -4,10 +4,7 @@ from datetime import datetime, date
 import pytz
 from typing import Dict, List, Optional
 import os
-import urllib3
-import certifi
 import json
-import time
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
@@ -27,175 +24,101 @@ class PuntingFormAPI:
         self.api_key = api_key
         self.session = requests.Session()
         
-        # Configure SSL verification
-        self.session.verify = True
-        
         # Configure retries with backoff
         retry_strategy = Retry(
-            total=5,
-            backoff_factor=0.5,
-            status_forcelist=[500, 502, 503, 504],
-            allowed_methods=['GET', 'POST']
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "OPTIONS", "POST"]
         )
         
-        # Configure adapter with retry strategy and SSL settings
-        adapter = HTTPAdapter(
-            max_retries=retry_strategy,
-            pool_connections=10,
-            pool_maxsize=10
-        )
-        
+        # Configure adapter with retry strategy
+        adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
         
-        # Set request headers
+        # Set headers
         self.session.headers.update({
             "Authorization": f"Bearer {self.api_key}",
             "Accept": "application/json",
             "Content-Type": "application/json",
             "User-Agent": "RacingAnalysisPlatform/1.0"
         })
-        
-        # Add proxy if configured
-        proxy_url = os.getenv("PROXY_URL")
-        if proxy_url:
-            self.session.proxies = {
-                "http": proxy_url,
-                "https": proxy_url
-            }
-
-    def format_date(self, date_obj) -> Optional[str]:
-        """Format date for API requests with proper timezone handling"""
-        try:
-            if isinstance(date_obj, datetime):
-                return date_obj.strftime("%Y-%m-%d")
-            elif isinstance(date_obj, str):
-                return datetime.strptime(date_obj, "%Y-%m-%d").strftime("%Y-%m-%d")
-            elif isinstance(date_obj, date):
-                return date_obj.strftime("%Y-%m-%d")
-            return datetime.combine(date_obj, datetime.min.time()).strftime("%Y-%m-%d")
-        except Exception as e:
-            logger.error(f"Date formatting error: {str(e)}")
-            return None
 
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict:
         """Make API request with improved error handling"""
         url = f"{self.base_url}{endpoint}"
         
-        for attempt in range(3):
-            try:
-                logger.info(f"Making {method} request to {endpoint}")
-                
-                # Set default timeout if not provided
-                if 'timeout' not in kwargs:
-                    kwargs['timeout'] = 30
-                
-                response = self.session.request(method, url, **kwargs)
-                
-                # Log response status and headers for debugging
-                logger.debug(f"Response status: {response.status_code}")
-                logger.debug(f"Response headers: {dict(response.headers)}")
-                
+        try:
+            logger.info(f"Making {method} request to {endpoint}")
+            
+            # Set default timeout
+            kwargs['timeout'] = kwargs.get('timeout', 30)
+            
+            response = self.session.request(method, url, **kwargs)
+            
+            # Log response details for debugging
+            logger.debug(f"Response status: {response.status_code}")
+            logger.debug(f"Response headers: {dict(response.headers)}")
+            
+            if response.status_code == 200:
                 try:
-                    response_data = response.json() if response.content else {}
+                    return response.json()
                 except json.JSONDecodeError as e:
-                    if attempt < 2:
-                        time.sleep(1)
-                        continue
-                    logger.error(f"Failed to parse JSON response: {str(e)}")
-                    return {"error": "Invalid JSON response", "details": str(e)}
+                    logger.error(f"Invalid JSON response: {str(e)}")
+                    return {"error": "Invalid response format"}
+            elif response.status_code == 401:
+                logger.error("Authentication failed")
+                return {"error": "Invalid API key"}
+            elif response.status_code == 403:
+                logger.error("Access forbidden")
+                return {"error": "Access denied"}
+            elif response.status_code == 429:
+                logger.warning("Rate limit exceeded")
+                return {"error": "Rate limit exceeded"}
+            else:
+                logger.error(f"Request failed with status {response.status_code}")
+                return {"error": f"Request failed: {response.status_code}"}
                 
-                if response.status_code == 200:
-                    return response_data
-                elif response.status_code == 401:
-                    return {"error": "Invalid API key or unauthorized access"}
-                elif response.status_code == 429:
-                    if attempt < 2:
-                        time.sleep(2)
-                        continue
-                    return {"error": "Rate limit exceeded. Please try again later"}
-                else:
-                    if attempt < 2:
-                        time.sleep(1)
-                        continue
-                    response.raise_for_status()
-                    
-            except requests.exceptions.SSLError as e:
-                if attempt < 2:
-                    time.sleep(1)
-                    continue
-                logger.error(f"SSL Error: {str(e)}")
-                return {"error": "SSL verification failed", "details": str(e)}
-            except requests.exceptions.ConnectionError as e:
-                if attempt < 2:
-                    time.sleep(1)
-                    continue
-                logger.error(f"Connection Error: {str(e)}")
-                return {"error": "Connection failed", "details": str(e)}
-            except requests.exceptions.Timeout as e:
-                if attempt < 2:
-                    time.sleep(1)
-                    continue
-                logger.error(f"Timeout Error: {str(e)}")
-                return {"error": "Request timed out", "details": str(e)}
-            except Exception as e:
-                if attempt < 2:
-                    time.sleep(1)
-                    continue
-                logger.error(f"Request failed: {str(e)}")
-                return {"error": "Request failed", "details": str(e)}
-        
-        return {"error": "Request failed after all retries"}
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection error: {str(e)}")
+            return {"error": "Connection failed"}
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Request timeout: {str(e)}")
+            return {"error": "Request timed out"}
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            return {"error": f"Unexpected error: {str(e)}"}
 
-    def get_meetings(self, meeting_date: str, jurisdiction: str) -> Dict:
-        """Get race meetings for a specific date"""
-        formatted_date = self.format_date(meeting_date)
-        if not formatted_date:
-            return {"error": "Invalid date format"}
+    def format_date(self, date_obj: Optional[datetime | date | str]) -> Optional[str]:
+        """Format date with proper timezone handling"""
+        if not date_obj:
+            return None
             
-        logger.info(f"Fetching meetings for {formatted_date} in {jurisdiction}")
-        return self._make_request(
-            "GET",
-            "/meetings",
-            params={
-                "date": formatted_date,
-                "jurisdiction": jurisdiction
-            }
-        )
-
-    def get_races_in_meeting(self, meeting_date: str, meeting_id: str, jurisdiction: str) -> Dict:
-        """Get all races in a meeting"""
-        formatted_date = self.format_date(meeting_date)
-        if not formatted_date:
-            return {"error": "Invalid date format"}
+        try:
+            tz = pytz.timezone('Australia/Sydney')
             
-        logger.info(f"Fetching races for meeting {meeting_id}")
-        return self._make_request(
-            "GET",
-            f"/meetings/{meeting_id}/races",
-            params={
-                "date": formatted_date,
-                "jurisdiction": jurisdiction
-            }
-        )
-
-    def get_race_fields(self, race_id: str, include_form: bool = True) -> Dict:
-        """Get race fields and form data"""
-        logger.info(f"Fetching fields for race {race_id}")
-        return self._make_request(
-            "GET",
-            f"/races/{race_id}/fields",
-            params={"include_form": str(include_form).lower()}
-        )
-
-    def get_runner_form(self, runner_id: str, detailed: bool = True) -> Dict:
-        """Get detailed form for a specific runner"""
-        logger.info(f"Fetching form for runner {runner_id}")
-        return self._make_request(
-            "GET",
-            f"/runners/{runner_id}/form",
-            params={"detailed": str(detailed).lower()}
-        )
+            if isinstance(date_obj, datetime):
+                return date_obj.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
+            elif isinstance(date_obj, str):
+                try:
+                    dt = datetime.strptime(date_obj, "%Y-%m-%d")
+                    return dt.replace(tzinfo=tz).strftime("%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    try:
+                        dt = datetime.strptime(date_obj, "%Y-%m-%dT%H:%M:%S%z")
+                        return dt.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        logger.error(f"Invalid date format: {date_obj}")
+                        return None
+            elif isinstance(date_obj, date):
+                dt = datetime.combine(date_obj, datetime.min.time())
+                return dt.replace(tzinfo=tz).strftime("%Y-%m-%d %H:%M:%S")
+                
+            return None
+        except Exception as e:
+            logger.error(f"Date formatting error: {str(e)}")
+            return None
 
     def get_next_races(self, jurisdiction: str, limit: Optional[int] = None) -> Dict:
         """Get upcoming races"""
