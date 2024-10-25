@@ -3,6 +3,8 @@ from datetime import datetime
 import pytz
 from typing import Dict, List
 import logging
+import time
+import requests
 from punting_form_analyzer import PuntingFormAPI
 from account_management import AccountManager
 from betting_system_integration import BettingSystemIntegration
@@ -45,6 +47,51 @@ def initialize_client():
             st.error(f"Failed to initialize client: {str(e)}")
             st.stop()
 
+def format_date(date_obj):
+    """Format date for API requests"""
+    try:
+        tz = pytz.timezone('Australia/Sydney')
+        if isinstance(date_obj, datetime):
+            return date_obj.astimezone(tz).strftime("%Y-%m-%d")
+        elif isinstance(date_obj, str):
+            dt = datetime.strptime(date_obj, "%Y-%m-%d")
+            return dt.astimezone(tz).strftime("%Y-%m-%d")
+        return date_obj.astimezone(tz).strftime("%Y-%m-%d")
+    except Exception as e:
+        logger.error(f"Date formatting error: {str(e)}")
+        return None
+
+def handle_api_request(func, *args, **kwargs):
+    """Generic API request handler with improved error handling"""
+    with st.spinner("Loading data..."):
+        try:
+            for attempt in range(3):
+                try:
+                    response = func(*args, **kwargs)
+                    if isinstance(response, dict) and 'error' in response:
+                        if attempt < 2:
+                            time.sleep(1)
+                            continue
+                        st.error(f"API Error: {response['error']}")
+                        return None
+                    return response
+                except requests.exceptions.SSLError:
+                    if attempt < 2:
+                        time.sleep(1)
+                        continue
+                    st.error("SSL verification failed. Retrying with alternative configuration...")
+                    return None
+                except requests.exceptions.ConnectionError:
+                    if attempt < 2:
+                        time.sleep(1)
+                        continue
+                    st.error("Connection failed. Please check your internet connection.")
+                    return None
+        except Exception as e:
+            logger.error(f"Request failed: {str(e)}")
+            st.error(f"An error occurred: {str(e)}")
+            return None
+
 def format_meeting_name(meeting: Dict) -> str:
     """Format meeting name for display"""
     venue = meeting.get('venue_name', '')
@@ -57,34 +104,6 @@ def format_race_name(race: Dict) -> str:
     name = race.get('name', '')
     distance = race.get('distance', '')
     return f"Race {number} - {name} ({distance}m)" if distance else f"Race {number} - {name}"
-
-def handle_api_request(func, *args, **kwargs) -> Dict:
-    """Generic API request handler with error handling"""
-    try:
-        response = func(*args, **kwargs)
-        if isinstance(response, Dict):
-            if 'error' in response:
-                st.error(f"API Error: {response['error']}")
-                return None
-            return response
-        return None
-    except Exception as e:
-        logger.error(f"API request failed: {str(e)}")
-        st.error(f"Request failed: {str(e)}")
-        return None
-
-def format_date(date_obj) -> str:
-    """Format date for API requests"""
-    try:
-        if isinstance(date_obj, datetime):
-            return date_obj.strftime("%Y-%m-%d")
-        elif isinstance(date_obj, str):
-            return datetime.strptime(date_obj, "%Y-%m-%d").strftime("%Y-%m-%d")
-        return date_obj.strftime("%Y-%m-%d")
-    except Exception as e:
-        logger.error(f"Date formatting error: {str(e)}")
-        st.error("Invalid date format")
-        return None
 
 def main():
     st.title("🏇 Racing Analysis Platform")
@@ -143,36 +162,43 @@ def main():
                         )
                         
                         if selected_meeting:
-                            races_response = handle_api_request(
-                                st.session_state.client.get_races_in_meeting,
-                                meeting_date=formatted_date,
-                                meeting_id=selected_meeting['id'],
-                                jurisdiction=jurisdiction
-                            )
-                            
-                            if races_response and 'races' in races_response:
-                                races = races_response['races']
-                                if races:
-                                    selected_race = st.selectbox(
-                                        "Select Race",
-                                        options=races,
-                                        format_func=format_race_name,
-                                        help="Select a race to analyze"
-                                    )
-                                    
-                                    if selected_race:
-                                        with st.spinner("Loading race details..."):
-                                            race_fields = handle_api_request(
-                                                st.session_state.client.get_race_fields,
-                                                race_id=selected_race['id'],
-                                                include_form=True
-                                            )
-                                            
-                                            if race_fields and not race_fields.get('error'):
-                                                race_info.render_race_overview(race_fields)
-                                                betting_system.process_race(race_fields)
-                                else:
-                                    st.info("No races available for this meeting")
+                            try:
+                                races_response = handle_api_request(
+                                    st.session_state.client.get_races_in_meeting,
+                                    meeting_date=formatted_date,
+                                    meeting_id=selected_meeting['id'],
+                                    jurisdiction=jurisdiction
+                                )
+                                
+                                if races_response and 'races' in races_response:
+                                    races = races_response['races']
+                                    if races:
+                                        selected_race = st.selectbox(
+                                            "Select Race",
+                                            options=races,
+                                            format_func=format_race_name,
+                                            help="Select a race to analyze"
+                                        )
+                                        
+                                        if selected_race:
+                                            try:
+                                                race_fields = handle_api_request(
+                                                    st.session_state.client.get_race_fields,
+                                                    race_id=selected_race['id'],
+                                                    include_form=True
+                                                )
+                                                if race_fields and not race_fields.get('error'):
+                                                    race_info.render_race_overview(race_fields)
+                                                else:
+                                                    st.error("Failed to load race fields. Please try again.")
+                                            except Exception as e:
+                                                logger.error(f"Error loading race fields: {str(e)}")
+                                                st.error("An error occurred while loading race data. Please try again.")
+                                    else:
+                                        st.info("No races available for this meeting")
+                            except Exception as e:
+                                logger.error(f"Error loading races: {str(e)}")
+                                st.error("Failed to load races. Please try again.")
                     else:
                         st.info("No meetings available for the selected date and jurisdiction")
     

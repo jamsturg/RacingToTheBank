@@ -6,6 +6,10 @@ from typing import Dict, List, Optional
 import os
 import urllib3
 import certifi
+import json
+import time
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,26 +27,26 @@ class PuntingFormAPI:
         self.api_key = api_key
         self.session = requests.Session()
         
-        # Enable SSL verification with certifi
-        self.session.verify = certifi.where()
+        # Configure SSL verification
+        self.session.verify = True
         
-        # Add retry configuration with increased retries and backoff
-        retry_strategy = urllib3.util.Retry(
-            total=3,
-            backoff_factor=1,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=frozenset(['GET', 'POST']),
-            raise_on_status=True
+        # Configure retries with backoff
+        retry_strategy = Retry(
+            total=5,
+            backoff_factor=0.5,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=['GET', 'POST']
         )
         
-        # Configure connection pool with SSL settings
-        adapter = requests.adapters.HTTPAdapter(
+        # Configure adapter with retry strategy and SSL settings
+        adapter = HTTPAdapter(
             max_retries=retry_strategy,
             pool_connections=10,
-            pool_maxsize=10,
-            pool_block=False
+            pool_maxsize=10
         )
+        
         self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
         
         # Set request headers
         self.session.headers.update({
@@ -51,52 +55,94 @@ class PuntingFormAPI:
             "Content-Type": "application/json",
             "User-Agent": "RacingAnalysisPlatform/1.0"
         })
+        
+        # Add proxy if configured
+        proxy_url = os.getenv("PROXY_URL")
+        if proxy_url:
+            self.session.proxies = {
+                "http": proxy_url,
+                "https": proxy_url
+            }
 
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict:
-        """Make API request with error handling and retries"""
+        """Make API request with improved error handling"""
         url = f"{self.base_url}{endpoint}"
         
-        try:
-            logger.info(f"Making {method} request to {endpoint}")
-            response = self.session.request(
-                method, 
-                url,
-                timeout=30,
-                **kwargs
-            )
-            
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code == 401:
-                logger.error("Authentication failed")
-                return {"error": "Invalid API key or unauthorized access"}
-            elif response.status_code == 429:
-                logger.error("Rate limit exceeded")
-                return {"error": "Rate limit exceeded. Please try again later"}
-            
-            response.raise_for_status()
-            
-        except requests.exceptions.SSLError as e:
-            logger.error(f"SSL Error: {str(e)}")
-            return {"error": "SSL verification failed", "details": str(e)}
-        except requests.exceptions.ConnectionError as e:
-            logger.error(f"Connection Error: {str(e)}")
-            return {"error": "Connection failed", "details": str(e)}
-        except requests.exceptions.Timeout as e:
-            logger.error(f"Timeout Error: {str(e)}")
-            return {"error": "Request timed out", "details": str(e)}
-        except Exception as e:
-            logger.error(f"Request failed: {str(e)}")
-            return {"error": "Request failed", "details": str(e)}
-    
+        for attempt in range(3):
+            try:
+                logger.info(f"Making {method} request to {endpoint}")
+                
+                # Set default timeout if not provided
+                if 'timeout' not in kwargs:
+                    kwargs['timeout'] = 30
+                
+                response = self.session.request(method, url, **kwargs)
+                
+                # Log response status and headers for debugging
+                logger.debug(f"Response status: {response.status_code}")
+                logger.debug(f"Response headers: {dict(response.headers)}")
+                
+                try:
+                    response_data = response.json() if response.content else {}
+                except json.JSONDecodeError as e:
+                    if attempt < 2:
+                        time.sleep(1)
+                        continue
+                    logger.error(f"Failed to parse JSON response: {str(e)}")
+                    return {"error": "Invalid JSON response", "details": str(e)}
+                
+                if response.status_code == 200:
+                    return response_data
+                elif response.status_code == 401:
+                    return {"error": "Invalid API key or unauthorized access"}
+                elif response.status_code == 429:
+                    if attempt < 2:
+                        time.sleep(2)
+                        continue
+                    return {"error": "Rate limit exceeded. Please try again later"}
+                else:
+                    if attempt < 2:
+                        time.sleep(1)
+                        continue
+                    response.raise_for_status()
+                    
+            except requests.exceptions.SSLError as e:
+                if attempt < 2:
+                    time.sleep(1)
+                    continue
+                logger.error(f"SSL Error: {str(e)}")
+                return {"error": "SSL verification failed", "details": str(e)}
+            except requests.exceptions.ConnectionError as e:
+                if attempt < 2:
+                    time.sleep(1)
+                    continue
+                logger.error(f"Connection Error: {str(e)}")
+                return {"error": "Connection failed", "details": str(e)}
+            except requests.exceptions.Timeout as e:
+                if attempt < 2:
+                    time.sleep(1)
+                    continue
+                logger.error(f"Timeout Error: {str(e)}")
+                return {"error": "Request timed out", "details": str(e)}
+            except Exception as e:
+                if attempt < 2:
+                    time.sleep(1)
+                    continue
+                logger.error(f"Request failed: {str(e)}")
+                return {"error": "Request failed", "details": str(e)}
+        
+        return {"error": "Request failed after all retries"}
+
     def format_date(self, date_obj) -> Optional[str]:
-        """Format date for API requests"""
+        """Format date for API requests with timezone handling"""
         try:
+            tz = pytz.timezone('Australia/Sydney')
             if isinstance(date_obj, datetime):
-                return date_obj.strftime("%Y-%m-%d")
+                return date_obj.astimezone(tz).strftime("%Y-%m-%d")
             elif isinstance(date_obj, str):
-                return datetime.strptime(date_obj, "%Y-%m-%d").strftime("%Y-%m-%d")
-            return date_obj.strftime("%Y-%m-%d")
+                dt = datetime.strptime(date_obj, "%Y-%m-%d")
+                return dt.astimezone(tz).strftime("%Y-%m-%d")
+            return date_obj.astimezone(tz).strftime("%Y-%m-%d")
         except Exception as e:
             logger.error(f"Date formatting error: {str(e)}")
             return None

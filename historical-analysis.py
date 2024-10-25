@@ -1,4 +1,3 @@
-```python
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -208,4 +207,3 @@ class HistoricalAnalysis:
                 runner2: len([r for r in results if r['winner'] == runner2])
             }
         }
-```
