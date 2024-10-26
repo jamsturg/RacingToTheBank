@@ -40,14 +40,23 @@ class AccountManager(LoggerMixin):
                 
             url = f"{st.session_state.tab_client.base_url}/oauth/token"
             
+            # Log attempt (excluding password)
+            self.logger.info(f"Attempting login for account: {account_number}")
+            
             # Validate credentials before making request
-            if not all([
-                st.session_state.tab_client.client_id,
-                st.session_state.tab_client.client_secret,
-                account_number,
-                password
-            ]):
-                self.logger.error("Missing required credentials")
+            if not st.session_state.tab_client.client_id:
+                self.logger.error("Missing TAB_CLIENT_ID environment variable")
+                st.session_state.login_error = "System configuration error: Missing API client ID"
+                return False
+                
+            if not st.session_state.tab_client.client_secret:
+                self.logger.error("Missing TAB_CLIENT_SECRET environment variable") 
+                st.session_state.login_error = "System configuration error: Missing API client secret"
+                return False
+                
+            if not account_number or not password:
+                self.logger.error("Missing account number or password")
+                st.session_state.login_error = "Please enter both account number and password"
                 return False
                 
             data = {
@@ -72,6 +81,15 @@ class AccountManager(LoggerMixin):
                 )
                 
                 self.logger.info(f"OAuth response status: {response.status_code}")
+                self.logger.debug(f"OAuth response headers: {dict(response.headers)}")
+                
+                # Log full response for debugging (excluding sensitive data)
+                try:
+                    resp_data = response.json()
+                    debug_data = {k:v for k,v in resp_data.items() if k not in ['access_token', 'refresh_token']}
+                    self.logger.debug(f"OAuth response data: {debug_data}")
+                except:
+                    self.logger.debug("Could not parse response as JSON")
                 
                 if response.status_code == 200:
                     try:

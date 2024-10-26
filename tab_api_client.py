@@ -32,7 +32,7 @@ class TABApiClient(LoggerMixin):
     
     def __init__(self):
         super().__init__()
-        self.base_url = "https://api.beta.tab.com.au"
+        self.base_url = "https://api.tab.com.au"
         self.client_id = os.getenv("TAB_CLIENT_ID")
         self.client_secret = os.getenv("TAB_CLIENT_SECRET")
         
