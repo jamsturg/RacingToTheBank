@@ -109,6 +109,11 @@
     transform: scale(0.98);
 }
 
+/* Passive Event Listener Support */
+* {
+    touch-action: pan-y pinch-zoom;
+}
+
 /* Mobile-First Enhancements */
 @media screen and (max-width: 768px) {
     /* Show mobile navigation */
