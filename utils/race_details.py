@@ -1,8 +1,13 @@
 import streamlit as st
 from typing import Dict, Optional
 from datetime import datetime
-import plotly.graph_objects as go
 import pandas as pd
+
+try:
+    import plotly.graph_objects as go
+    HAS_PLOTLY = True
+except ImportError:
+    HAS_PLOTLY = False
 
 def render_race_details(race_data: Dict):
     """Render detailed race information panel"""
@@ -56,27 +61,33 @@ def render_track_info(race_data: Dict):
         st.metric("Weather", race_data.get('weather', 'N/A'))
         st.metric("Rail Position", race_data.get('railPosition', 'N/A'))
 
-    # Track bias visualization if available
+    # Track bias visualization if plotly is available
     if track_bias := race_data.get('trackBias'):
-        fig = go.Figure()
-        
-        # Add track bias indicators
-        fig.add_trace(go.Indicator(
-            mode = "gauge+number",
-            value = track_bias.get('inside_advantage', 0),
-            title = {'text': "Inside Advantage"},
-            gauge = {
-                'axis': {'range': [-1, 1]},
-                'bar': {'color': "darkblue"},
-                'steps': [
-                    {'range': [-1, -0.3], 'color': 'red'},
-                    {'range': [-0.3, 0.3], 'color': 'gray'},
-                    {'range': [0.3, 1], 'color': 'green'}
-                ]
-            }
-        ))
-        
-        st.plotly_chart(fig)
+        if HAS_PLOTLY:
+            fig = go.Figure()
+            
+            # Add track bias indicators
+            fig.add_trace(go.Indicator(
+                mode = "gauge+number",
+                value = track_bias.get('inside_advantage', 0),
+                title = {'text': "Inside Advantage"},
+                gauge = {
+                    'axis': {'range': [-1, 1]},
+                    'bar': {'color': "darkblue"},
+                    'steps': [
+                        {'range': [-1, -0.3], 'color': 'red'},
+                        {'range': [-0.3, 0.3], 'color': 'gray'},
+                        {'range': [0.3, 1], 'color': 'green'}
+                    ]
+                }
+            ))
+            
+            st.plotly_chart(fig)
+        else:
+            # Fallback to simple text display
+            st.metric("Inside Advantage", 
+                     f"{track_bias.get('inside_advantage', 0):.2f}",
+                     help="Track bias indicator (-1 to 1)")
 
 def render_statistics(race_data: Dict):
     """Render race statistics section"""
@@ -103,16 +114,23 @@ def render_statistics(race_data: Dict):
         st.metric("Max Rating", f"{stats_df['Rating'].max():.1f}")
         st.metric("Avg Win Rate", f"{stats_df['Win Rate'].mean():.1f}%")
 
-    # Create rating distribution chart
-    fig = go.Figure()
-    fig.add_trace(go.Histogram(
-        x=stats_df['Rating'],
-        nbinsx=10,
-        name='Rating Distribution'
-    ))
-    fig.update_layout(
-        title='Runner Ratings Distribution',
-        xaxis_title='Rating',
-        yaxis_title='Count'
-    )
-    st.plotly_chart(fig)
+    # Create rating distribution chart if plotly is available
+    if HAS_PLOTLY:
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(
+            x=stats_df['Rating'],
+            nbinsx=10,
+            name='Rating Distribution'
+        ))
+        fig.update_layout(
+            title='Runner Ratings Distribution',
+            xaxis_title='Rating',
+            yaxis_title='Count'
+        )
+        st.plotly_chart(fig)
+    else:
+        # Fallback to basic statistics
+        st.write("Rating Distribution:")
+        st.write(f"Min: {stats_df['Rating'].min():.1f}")
+        st.write(f"Max: {stats_df['Rating'].max():.1f}")
+        st.write(f"Mean: {stats_df['Rating'].mean():.1f}")
