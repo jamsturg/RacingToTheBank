@@ -1,11 +1,11 @@
 /* Enhanced Theme Colors */
 :root {
-    --primary: #1E88E5;
-    --secondary: #34495E;
-    --accent: #2ECC71;
-    --background: #F8FAFC;
+    --primary: #0A2647;
+    --secondary: #144272;
+    --accent: #205295;
+    --background: #2C74B3;
     --card: #FFFFFF;
-    --text: #2C3E50;
+    --text: #FFFFFF;
     --success: #27AE60;
     --warning: #F1C40F;
     --danger: #E74C3C;
@@ -16,8 +16,9 @@
 
 /* Global Styles */
 .stApp {
-    background: linear-gradient(135deg, var(--background), #E3F2FD);
+    background: linear-gradient(135deg, var(--primary), var(--background));
     font-family: 'Poppins', sans-serif;
+    color: var(--text);
 }
 
 /* Card Styling */
@@ -36,7 +37,7 @@ div.element-container:hover {
 
 /* Button Styling */
 .stButton > button {
-    background: linear-gradient(45deg, var(--primary), #42A5F5);
+    background: linear-gradient(45deg, var(--primary), var(--accent));
     border: none;
     border-radius: 25px;
     color: white;
@@ -46,8 +47,8 @@ div.element-container:hover {
 }
 
 .stButton > button:hover {
-    background: linear-gradient(45deg, #42A5F5, var(--primary));
-    box-shadow: 0 4px 15px rgba(30, 136, 229, 0.3);
+    background: linear-gradient(45deg, var(--accent), var(--primary));
+    box-shadow: 0 4px 15px rgba(10, 38, 71, 0.3);
     transform: translateY(-2px);
 }
 

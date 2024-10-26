@@ -1,12 +1,12 @@
 /* Theme Variables */
 :root {
-    --primary-color: #1E88E5;
-    --secondary-color: #135293;
-    --accent-color: #42A5F5;
-    --background-color: #F5F7FA;
+    --primary-color: #0A2647;
+    --secondary-color: #144272;
+    --accent-color: #205295;
+    --background-color: #2C74B3;
     --card-background: #FFFFFF;
-    --text-color: #2C3E50;
-    --border-color: #E0E4E8;
+    --text-color: #FFFFFF;
+    --border-color: #205295;
     --success-color: #4CAF50;
     --warning-color: #FFC107;
     --danger-color: #F44336;
