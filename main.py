@@ -51,43 +51,42 @@ st.set_page_config(
 
 def initialize_session_state():
     """Initialize and validate session state variables"""
-    if 'initialized' not in st.session_state:
-        session_vars = {
-            'initialized': True,
-            'client': None,
-            'selected_race': None,
-            'active_tab': "Racing",
-            'betslip': [],
-            'logged_in': False,
-            'webgl_context_lost': False,
-            'connection_error': False,
-            'last_refresh': None,
-            'error_count': 0,
-            'notifications': [],
-            'dark_mode': False,
-            'preferences': {},
-            'tab_client': None,
-            'account': None,
-            'account_token': None,
-            'login_error': None,
-            'auth_attempts': 0,
-            'last_balance_check': None,
-            'loading_state': False
-        }
-        
-        # Initialize all variables at once
-        for var, default in session_vars.items():
+    # Define session variables and their default values
+    session_vars = {
+        'initialized': True,
+        'client': None,
+        'selected_race': None,
+        'active_tab': "Racing",
+        'betslip': [],
+        'logged_in': False,
+        'webgl_context_lost': False,
+        'connection_error': False,
+        'last_refresh': None,
+        'error_count': 0,
+        'notifications': [],
+        'dark_mode': False,
+        'preferences': {},
+        'tab_client': None,
+        'account': None,
+        'account_token': None,
+        'login_error': None,
+        'auth_attempts': 0,
+        'last_balance_check': None,
+        'loading_state': False
+    }
+    
+    # Initialize unset variables
+    for var, default in session_vars.items():
+        if var not in st.session_state:
             st.session_state[var] = default
             
     # Validate existing variables
-    for var in st.session_state:
+    for var in list(st.session_state):
         if var in session_vars and not isinstance(st.session_state[var], type(session_vars[var])):
             logger.warning(f"Invalid type for session variable {var}, resetting to default")
             st.session_state[var] = session_vars[var]
-            
-    # Clear old variables
-    for var in list(st.session_state):
-        if var not in session_vars:
+        elif var not in session_vars:
+            # Clear old variables not in current session_vars
             del st.session_state[var]
 
 def initialize_client() -> Optional[PuntingFormAPI]:
