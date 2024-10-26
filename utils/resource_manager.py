@@ -2,6 +2,7 @@ import os
 import gc
 import logging
 import resource
+import sys
 from typing import Optional
 import streamlit as st
 from contextlib import contextmanager
@@ -35,7 +36,7 @@ class ResourceManager:
             
             # Set process priority
             try:
-                os.nice(19)  # Lowest priority
+                psutil.Process(os.getpid()).nice(19)  # Lowest priority
             except Exception:
                 logger.warning("Failed to set process priority")
             
@@ -68,12 +69,13 @@ class ResourceManager:
     def get_memory_usage(self) -> dict:
         """Get current memory usage statistics"""
         try:
-            usage = resource.getrusage(resource.RUSAGE_SELF)
+            process = psutil.Process(os.getpid())
+            memory_info = process.memory_info()
             return {
-                'rss': usage.ru_maxrss / 1024,  # Convert KB to MB
-                'shared': usage.ru_ixrss / 1024,
-                'unshared': usage.ru_idrss / 1024,
-                'stack': usage.ru_isrss / 1024
+                'rss': memory_info.rss / (1024 * 1024),  # Convert to MB
+                'shared': 0,  # Not available directly through psutil
+                'unshared': 0,  # Not available directly through psutil
+                'stack': 0  # Not available directly through psutil
             }
         except Exception as e:
             logger.error(f"Error getting memory usage: {str(e)}")
@@ -82,8 +84,8 @@ class ResourceManager:
     def get_cpu_usage(self) -> float:
         """Get CPU usage"""
         try:
-            usage = resource.getrusage(resource.RUSAGE_SELF)
-            return (usage.ru_utime + usage.ru_stime) * 100
+            process = psutil.Process(os.getpid())
+            return process.cpu_percent()
         except Exception as e:
             logger.error(f"Error getting CPU usage: {str(e)}")
             return 0.0

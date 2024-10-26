@@ -1,7 +1,7 @@
 [server]
 headless = true
-port = 8501
 address = "0.0.0.0"
+port = 5000
 maxUploadSize = 10
 enableCORS = true
 enableXsrfProtection = true
@@ -10,16 +10,10 @@ baseUrlPath = ""
 enableWebsocketCompression = true
 fileWatcherType = "none"
 
-[global]
-developmentMode = false
-disableWatchdogWarning = true
-showWarningOnDirectExecution = false
-dataFrameSerialization = "legacy"
-
 [browser]
 gatherUsageStats = false
 serverAddress = "0.0.0.0"
-serverPort = 8501
+serverPort = 5000
 
 [theme]
 base = "light"
@@ -30,12 +24,9 @@ textColor = "#262730"
 font = "sans serif"
 
 [runner]
-magicEnabled = false
 fastReruns = false
 enforceSerializableSessionState = true
 postScriptGC = true
-beforeRun = "gc.collect()"
-memory.limit = 64
 
 [logger]
 level = "error"
@@ -44,10 +35,3 @@ messageFormat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 [client]
 toolbarMode = "minimal"
 showErrorDetails = false
-caching = true
-
-[caching]
-enable = true
-memoryLimit = 32
-diskLimit = 64
-ttl = 60
