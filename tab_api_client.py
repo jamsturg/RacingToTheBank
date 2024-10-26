@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Optional, Union
 from datetime import datetime, timedelta
 import requests
