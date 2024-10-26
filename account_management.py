@@ -218,8 +218,17 @@ class AccountManager(LoggerMixin):
                     st.session_state.login_error = None
                 
                 with st.form("login_form", clear_on_submit=True):
-                    account_number = st.text_input("TAB Account Number")
-                    password = st.text_input("Password", type="password")
+                    account_number = st.text_input(
+                        "TAB Account Number",
+                        key="account_number_input",
+                        autocomplete="username"
+                    )
+                    password = st.text_input(
+                        "Password",
+                        type="password",
+                        key="password_input",
+                        autocomplete="current-password"
+                    )
                     
                     if st.form_submit_button("Login", use_container_width=True):
                         if account_number and password:

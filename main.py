@@ -22,17 +22,20 @@ st.set_page_config(
     }
 )
 
-# Initialize session state
-if 'client' not in st.session_state:
-    st.session_state.client = None
-if 'selected_race' not in st.session_state:
-    st.session_state.selected_race = None
-if 'active_tab' not in st.session_state:
-    st.session_state.active_tab = "Racing"
-if 'betslip' not in st.session_state:
-    st.session_state.betslip = []
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
+# Initialize session state with error handling
+session_vars = {
+    'client': None,
+    'selected_race': None,
+    'active_tab': "Racing",
+    'betslip': [],
+    'logged_in': False,
+    'webgl_context_lost': False,
+    'connection_error': False
+}
+    
+for var, default in session_vars.items():
+    if var not in st.session_state:
+        st.session_state[var] = default
 
 def initialize_client():
     """Initialize API client with proper error handling"""

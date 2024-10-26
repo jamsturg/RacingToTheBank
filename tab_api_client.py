@@ -49,8 +49,14 @@ class TABApiClient(LoggerMixin):
         self.session = requests.Session()
         self.session.headers.update({
             "Accept": "application/json",
-            "User-Agent": "RacingAnalysisPlatform/1.0"
+            "User-Agent": "RacingAnalysisPlatform/1.0",
+            "X-Requested-With": "XMLHttpRequest"
         })
+        
+        # Configure WebSocket reconnection
+        self.ws_retry_count = 0
+        self.ws_max_retries = 3
+        self.ws_retry_delay = 1000  # Start with 1 second delay
 
     def _refresh_token(self) -> bool:
         """Refresh OAuth token using refresh token"""
