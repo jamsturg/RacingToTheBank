@@ -5,7 +5,9 @@ import logging
 from punting_form_analyzer import PuntingFormAPI
 from account_management import AccountManager
 from utils.date_utils import format_date, format_countdown
+from utils.race_details import render_race_details
 import json
+import plotly.graph_objects as go
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -114,18 +116,25 @@ def render_race_list(race_type: str):
 
 def render_next_to_jump():
     """Render Next To Jump section with tabs"""
-    st.subheader("Next To Jump")
+    col1, col2 = st.columns([2,3])
     
-    tab1, tab2, tab3 = st.tabs(["Horses", "Greyhounds", "Harness"])
-    
-    with tab1:
-        render_race_list("R")  # Thoroughbred races
-    
-    with tab2:
-        render_race_list("G")  # Greyhound races
-    
-    with tab3:
-        render_race_list("H")  # Harness races
+    with col1:
+        st.subheader("Next To Jump")
+        tab1, tab2, tab3 = st.tabs(["Horses", "Greyhounds", "Harness"])
+        
+        with tab1:
+            render_race_list("R")  # Thoroughbred races
+        
+        with tab2:
+            render_race_list("G")  # Greyhound races
+        
+        with tab3:
+            render_race_list("H")  # Harness races
+            
+    with col2:
+        if st.session_state.selected_race:
+            from utils.race_details import render_race_details
+            render_race_details(st.session_state.selected_race)
 
 def main():
     # Initialize account manager first
