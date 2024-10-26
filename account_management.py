@@ -221,13 +221,17 @@ class AccountManager(LoggerMixin):
                     account_number = st.text_input(
                         "TAB Account Number",
                         key="account_number_input",
-                        autocomplete="username"
+                        autocomplete="username",
+                        label_visibility="visible",
+                        help="Enter your TAB account number"
                     )
                     password = st.text_input(
-                        "Password",
+                        "Password", 
                         type="password",
                         key="password_input",
-                        autocomplete="current-password"
+                        autocomplete="current-password",
+                        label_visibility="visible",
+                        help="Enter your account password"
                     )
                     
                     if st.form_submit_button("Login", use_container_width=True):
