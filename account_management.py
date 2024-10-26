@@ -4,18 +4,15 @@ from typing import Dict, List, Optional
 from decimal import Decimal
 import pandas as pd
 import plotly.graph_objects as go
-import logging
 from tab_api_client import TABApiClient, APIError
 import pytz
 import requests
-import time  # Added missing import
+import time
+from utils.logger import frontend_logger, LoggerMixin, log_execution_time
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-class AccountManager:
+class AccountManager(LoggerMixin):
     def __init__(self):
+        super().__init__()
         # Initialize session state variables
         self._init_session_state()
 
