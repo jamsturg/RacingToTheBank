@@ -1,17 +1,31 @@
 import streamlit as st
 from datetime import datetime, date
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 import logging
+import json
+from pathlib import Path
+import sys
+
+# Local imports
 from punting_form_analyzer import PuntingFormAPI
 from account_management import AccountManager
 from utils.date_utils import format_date, format_countdown
 from utils.race_details import render_race_details
-import json
-import plotly.graph_objects as go
+from utils.logger import setup_logger
+
+# Optional imports with fallback
+try:
+    import plotly.graph_objects as go
+    HAS_PLOTLY = True
+except ImportError:
+    HAS_PLOTLY = False
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = setup_logger(
+    "main",
+    Path("logs/main.log"),
+    level=logging.INFO
+)
 
 # Page config
 st.set_page_config(
@@ -24,39 +38,76 @@ st.set_page_config(
     }
 )
 
-# Initialize session state with error handling
-session_vars = {
-    'client': None,
-    'selected_race': None,
-    'active_tab': "Racing",
-    'betslip': [],
-    'logged_in': False,
-    'webgl_context_lost': False,
-    'connection_error': False
-}
+def initialize_session_state():
+    """Initialize and validate session state variables"""
+    session_vars = {
+        'client': None,
+        'selected_race': None,
+        'active_tab': "Racing",
+        'betslip': [],
+        'logged_in': False,
+        'webgl_context_lost': False,
+        'connection_error': False,
+        'last_refresh': None,
+        'error_count': 0,
+        'notifications': [],
+        'dark_mode': False,
+        'preferences': {}
+    }
     
-for var, default in session_vars.items():
-    if var not in st.session_state:
-        st.session_state[var] = default
+    # Initialize missing variables
+    for var, default in session_vars.items():
+        if var not in st.session_state:
+            st.session_state[var] = default
+            
+    # Validate existing variables
+    for var in st.session_state:
+        if var in session_vars and not isinstance(st.session_state[var], type(session_vars[var])):
+            logger.warning(f"Invalid type for session variable {var}, resetting to default")
+            st.session_state[var] = session_vars[var]
+            
+    # Clear old variables
+    for var in list(st.session_state):
+        if var not in session_vars:
+            del st.session_state[var]
 
-def initialize_client():
+def initialize_client() -> Optional[PuntingFormAPI]:
     """Initialize API client with proper error handling"""
     if not st.session_state.logged_in:
-        return
+        return None
         
     if st.session_state.client is None:
         try:
-            api_key = st.secrets["punting_form"]["api_key"]
+            # Check for API key in multiple locations
+            api_key = (
+                st.secrets.get("punting_form", {}).get("api_key") or
+                os.environ.get("PUNTING_FORM_API_KEY")
+            )
+            
             if not api_key:
-                st.error("Missing Punting Form API key")
+                logger.error("API key not found in secrets or environment")
+                st.error("Missing Punting Form API key. Please check configuration.")
                 st.stop()
             
-            st.session_state.client = PuntingFormAPI(api_key)
-            logger.info("API client initialized successfully")
+            client = PuntingFormAPI(api_key)
+            
+            # Test API connection
+            if not client.verify_credentials():
+                logger.error("API credentials verification failed")
+                st.error("Invalid API credentials. Please check your API key.")
+                st.stop()
+                
+            st.session_state.client = client
+            logger.info("API client initialized and verified successfully")
+            
         except Exception as e:
-            logger.error(f"Client initialization error: {str(e)}")
-            st.error("Failed to initialize client. Please check your API key.")
+            logger.error(f"Client initialization error: {str(e)}", exc_info=True)
+            st.error(
+                "Failed to initialize client. Please check your API key and network connection."
+            )
             st.stop()
+            
+    return st.session_state.client
 
 def handle_api_response(response: Dict) -> Optional[Dict]:
     """Handle API response with proper error handling"""
