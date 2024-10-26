@@ -144,12 +144,4 @@ def main():
         st.info("Please log in to access racing information")
 
 if __name__ == "__main__":
-    import streamlit.web.bootstrap as bootstrap
-    # Use port 8501 which is Streamlit's default port
-    import os
-    import sys
-    os.environ['STREAMLIT_SERVER_PORT'] = '8501'
-    flag_options = []
-    # Get the path to the current file
-    main_script_path = os.path.abspath(__file__)
-    bootstrap.run(main_script_path, "", [], flag_options)
+    main()
