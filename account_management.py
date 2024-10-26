@@ -41,7 +41,164 @@ class AccountManager(LoggerMixin):
             if var not in st.session_state:
                 st.session_state[var] = default
 
+    def render_login(self):
+        """Render login interface with improved styling"""
+        if not st.session_state.logged_in:
+            # Add custom CSS for login page
+            st.markdown('''
+                <style>
+                    .login-container {
+                        max-width: 400px;
+                        margin: 2rem auto;
+                        padding: 2rem;
+                        border-radius: 10px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        background: white;
+                    }
+                    .login-header {
+                        text-align: center;
+                        margin-bottom: 2rem;
+                    }
+                    .login-header h1 {
+                        color: #1E88E5;
+                        font-size: 2.5rem;
+                        margin-bottom: 0.5rem;
+                    }
+                    .login-header p {
+                        color: #666;
+                        font-style: italic;
+                    }
+                    .login-form {
+                        margin-top: 1.5rem;
+                    }
+                    .login-error {
+                        background: #ffebee;
+                        color: #c62828;
+                        padding: 0.8rem;
+                        border-radius: 5px;
+                        margin-bottom: 1rem;
+                    }
+                    .stButton button {
+                        width: 100%;
+                        background: #1E88E5;
+                        color: white;
+                        padding: 0.8rem;
+                        border: none;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        font-weight: bold;
+                        margin-top: 1rem;
+                    }
+                    .guest-login {
+                        text-align: center;
+                        margin: 1rem 0;
+                    }
+                    .divider {
+                        text-align: center;
+                        margin: 1.5rem 0;
+                        position: relative;
+                    }
+                    .divider::before,
+                    .divider::after {
+                        content: '';
+                        position: absolute;
+                        top: 50%;
+                        width: 45%;
+                        height: 1px;
+                        background: #ddd;
+                    }
+                    .divider::before { left: 0; }
+                    .divider::after { right: 0; }
+                </style>
+            ''', unsafe_allow_html=True)
+
+            # Render login form in container
+            st.markdown('<div class="login-container">', unsafe_allow_html=True)
+            
+            # Login header
+            st.markdown('''
+                <div class="login-header">
+                    <h1>💰 To The Bank</h1>
+                    <p>Smart Racing Analytics</p>
+                </div>
+            ''', unsafe_allow_html=True)
+
+            # Guest login button
+            st.markdown('<div class="guest-login">', unsafe_allow_html=True)
+            if st.button("Continue as Guest", key="guest_login", type="secondary"):
+                st.session_state.logged_in = True
+                st.session_state.account = {
+                    'user_id': 'guest',
+                    'account_number': 'GUEST',
+                    'balance': 0.0,
+                    'pending_bets': [],
+                    'bet_history': [],
+                    'preferences': {}
+                }
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Divider
+            st.markdown('<div class="divider">OR</div>', unsafe_allow_html=True)
+
+            # Show any existing error message
+            if st.session_state.login_error:
+                st.markdown(f'''
+                    <div class="login-error">
+                        {st.session_state.login_error}
+                    </div>
+                ''', unsafe_allow_html=True)
+                st.session_state.login_error = None
+
+            # Login form
+            with st.form("login_form", clear_on_submit=True):
+                account_number = st.text_input(
+                    "TAB Account Number",
+                    placeholder="Enter your account number",
+                    help="Your TAB account number"
+                )
+                password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    help="Your TAB account password"
+                )
+                
+                if st.form_submit_button("Login", use_container_width=True):
+                    if account_number and password:
+                        st.session_state.auth_attempts += 1
+                        
+                        # Add rate limiting
+                        if st.session_state.auth_attempts > 5:
+                            st.error("Too many login attempts. Please try again later.")
+                            time.sleep(5)  # Add delay after multiple attempts
+                        else:
+                            with st.spinner("Authenticating..."):
+                                if self._validate_login(account_number, password):
+                                    try:
+                                        account_data = self._load_account(account_number)
+                                        st.session_state.logged_in = True
+                                        st.session_state.account = account_data
+                                        st.success("Login successful!")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Failed to load account: {str(e)}")
+                    else:
+                        st.error("Please enter both account number and password")
+
+            st.markdown('</div>', unsafe_allow_html=True)  # Close login container
+
+            # Help text
+            st.markdown('''
+                <div style="text-align: center; margin-top: 2rem; color: #666;">
+                    <p>Need help? <a href="https://tab.com.au/help" target="_blank">Contact TAB Support</a></p>
+                </div>
+            ''', unsafe_allow_html=True)
+        else:
+            self.render_account_summary()
+
     def _validate_login(self, account_number: str, password: str) -> bool:
+        """Validate login credentials using TAB API"""
         try:
             if not st.session_state.tab_client:
                 st.session_state.tab_client = TABApiClient()
@@ -212,95 +369,6 @@ class AccountManager(LoggerMixin):
             self.logger.error(f"Unexpected error loading account: {str(e)}")
             raise
 
-    def render_login(self):
-        """Render login interface with improved error handling"""
-        if not st.session_state.logged_in:
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                st.title("🏇 Racing Analysis Platform")
-                st.subheader("Login")
-                
-                # Show any existing error message
-                if st.session_state.login_error:
-                    st.error(st.session_state.login_error)
-                    st.session_state.login_error = None
-
-                # Add guest login button
-                if st.button("Continue as Guest"):
-                    st.session_state.logged_in = True
-                    st.session_state.account = {
-                        'user_id': 'guest',
-                        'account_number': 'GUEST',
-                        'balance': 0.0,
-                        'pending_bets': [],
-                        'bet_history': [],
-                        'preferences': {}
-                    }
-                    st.rerun()
-                
-                st.markdown("---")
-                st.markdown("Or login with your TAB account:")
-                
-                with st.form("login_form", clear_on_submit=True):
-                    account_number = st.text_input(
-                        "TAB Account Number",
-                        key="account_number_input",
-                        autocomplete="username",
-                        label_visibility="visible",
-                        help="Enter your TAB account number"
-                    )
-                    password = st.text_input(
-                        "Password", 
-                        type="password",
-                        key="password_input",
-                        autocomplete="current-password",
-                        label_visibility="visible",
-                        help="Enter your account password"
-                    )
-                    
-                    if st.form_submit_button("Login", use_container_width=True):
-                        if account_number and password:
-                            st.session_state.auth_attempts += 1
-                            
-                            # Add rate limiting
-                            if st.session_state.auth_attempts > 5:
-                                st.error("Too many login attempts. Please try again later.")
-                                time.sleep(5)  # Add delay after multiple attempts
-                            else:
-                                # Show loading state instead of using spinner
-                                st.session_state.loading_state = True
-                                if self._validate_login(account_number, password):
-                                    try:
-                                        account_data = self._load_account(account_number)
-                                        st.session_state.logged_in = True
-                                        st.session_state.account = account_data
-                                        st.session_state.auth_attempts = 0
-                                        st.success("Login successful!")
-                                        st.session_state.loading_state = False
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Failed to load account: {str(e)}")
-                                st.session_state.loading_state = False
-                        else:
-                            st.error("Please enter both account number and password")
-                
-                # Show loading indicator
-                if st.session_state.loading_state:
-                    st.info("Authenticating...")
-                
-                # Add helper text
-                st.markdown("---")
-                st.markdown("""
-                    Need help? [Contact TAB Support](https://tab.com.au/help)
-                    
-                    Having trouble logging in?
-                    - Make sure your account number and password are correct
-                    - Check if you have API access enabled
-                    - Contact support if you continue having issues
-                """)
-        else:
-            self.render_account_summary()
-
     def render_account_summary(self):
         """Render account summary with improved error handling"""
         if not st.session_state.account:
@@ -311,7 +379,7 @@ class AccountManager(LoggerMixin):
         # Show guest mode notice if applicable
         if st.session_state.account.get('user_id') == 'guest':
             st.sidebar.warning("Guest Mode - Limited functionality")
-        
+            
         try:
             # Check if we need to refresh account data (every 5 minutes)
             if (st.session_state.last_balance_check is None or 

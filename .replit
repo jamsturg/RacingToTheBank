@@ -29,8 +29,16 @@ waitForPort = 8501
 
 [deployment]
 run = ["sh", "-c", "streamlit run --server.address 0.0.0.0 --server.port 8501 --server.headless true --server.enableCORS=false --server.enableWebsocketCompression=false main.py"]
-deploymentTarget = "cloudrun"
+deploymentTarget = "gce"
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
 
 [[ports]]
 localPort = 8501
 externalPort = 80
+
+[[ports]]
+localPort = 8502
+externalPort = 3000
