@@ -144,4 +144,6 @@ def main():
         st.info("Please log in to access racing information")
 
 if __name__ == "__main__":
-    main()
+    import streamlit.web.bootstrap as bootstrap
+    # Use a different port since 5000 is in use
+    bootstrap.run(main, "", [], port=8501)
