@@ -2,8 +2,12 @@ import streamlit as st
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from decimal import Decimal
-import pandas as pd
-import plotly.graph_objects as go
+try:
+    import pandas as pd
+    import plotly.graph_objects as go
+    HAS_DEPENDENCIES = True
+except ImportError:
+    HAS_DEPENDENCIES = False
 from tab_api_client import TABApiClient, APIError
 import pytz
 import requests
@@ -13,6 +17,10 @@ from utils.logger import frontend_logger, LoggerMixin, log_execution_time
 class AccountManager(LoggerMixin):
     def __init__(self):
         super().__init__()
+        # Check dependencies
+        if not HAS_DEPENDENCIES:
+            st.error("Required dependencies (pandas, plotly) not available. Please install them using: pip install --user pandas plotly")
+            return
         # Initialize session state variables
         self._init_session_state()
 

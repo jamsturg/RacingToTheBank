@@ -137,11 +137,15 @@ def render_next_to_jump():
             render_race_details(st.session_state.selected_race)
 
 def main():
-    # Initialize account manager first
-    account_manager = AccountManager()
-    
-    # Show login form and require login before proceeding
-    account_manager.render_login()
+    try:
+        # Initialize account manager first
+        account_manager = AccountManager()
+        
+        # Show login form and require login before proceeding
+        account_manager.render_login()
+    except ImportError as e:
+        st.error(f"Failed to initialize: {str(e)}")
+        st.info("Please install required dependencies using: pip install --user pandas plotly streamlit")
     
     # Only proceed with API initialization and content if logged in
     if st.session_state.logged_in:
