@@ -25,26 +25,50 @@ class AccountManager:
     def _validate_login(self, account_number: str, password: str) -> bool:
         """Validate login credentials using TAB API"""
         try:
-            # Initialize API client with OAuth credentials
+            # Initialize API client
             if not st.session_state.tab_client:
                 st.session_state.tab_client = TABApiClient()
+                
+            # Get OAuth token first
+            bearer_token = st.session_state.tab_client.get_bearer_token()
+            if not bearer_token:
+                logger.error("Failed to obtain bearer token")
+                return False
+                
+            # Make login request
+            headers = {
+                'Authorization': f'Bearer {bearer_token}',
+                'Content-Type': 'application/json'
+            }
             
-            # Make authentication request to TAB API
             response = st.session_state.tab_client.session.post(
-                f"{st.session_state.tab_client.base_url}/v1/account/login",
+                f"{st.session_state.tab_client.base_url}/v1/tab-info-service/login",
                 json={
                     'accountNumber': account_number,
                     'password': password
-                }
+                },
+                headers=headers
             )
             
-            if response.status_code == 200:
-                auth_data = response.json()
-                st.session_state.account_token = auth_data.get('token')
-                return True
-                
-            return False
+            # Log response details for debugging (without sensitive info)
+            logger.info(f"Login response status: {response.status_code}")
             
+            if response.status_code == 200:
+                try:
+                    auth_data = response.json()
+                    if auth_data.get('token'):
+                        st.session_state.account_token = auth_data['token']
+                        return True
+                except Exception as e:
+                    logger.error(f"Failed to parse login response: {str(e)}")
+                    return False
+            elif response.status_code == 401:
+                logger.error("Invalid credentials")
+                return False
+            else:
+                logger.error(f"Login failed with status {response.status_code}")
+                return False
+                
         except Exception as e:
             logger.error(f"Login error: {str(e)}")
             return False
