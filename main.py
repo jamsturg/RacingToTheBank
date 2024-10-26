@@ -149,6 +149,10 @@ def render_race_list(race_type: str):
     """Render list of upcoming races with improved error handling"""
     if not st.session_state.logged_in:
         return
+
+    if st.session_state.account.get('user_id') == 'guest':
+        st.info("Please login with a TAB account to view live race data")
+        return
         
     with st.spinner("Loading races..."):
         try:
@@ -225,8 +229,9 @@ def main():
     
     # Only proceed with API initialization and content if logged in
     if st.session_state.logged_in:
-        if st.session_state.client is None:
-            initialize_client()
+        if st.session_state.account.get('user_id') != 'guest':
+            if st.session_state.client is None:
+                initialize_client()
         
         # Main content
         st.title("🏇 Racing Analysis Platform")
