@@ -6,6 +6,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import logging
 from tab_api_client import TABApiClient, APIError
+import pytz
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -29,44 +31,43 @@ class AccountManager:
             if not st.session_state.tab_client:
                 st.session_state.tab_client = TABApiClient()
                 
-            # Get OAuth token first
-            bearer_token = st.session_state.tab_client.get_bearer_token()
-            if not bearer_token:
-                logger.error("Failed to obtain bearer token")
-                return False
-                
-            # Make login request
-            headers = {
-                'Authorization': f'Bearer {bearer_token}',
-                'Content-Type': 'application/json'
+            # Prepare OAuth password grant request
+            url = f"{st.session_state.tab_client.base_url}/oauth/token"
+            data = {
+                'grant_type': 'password',
+                'client_id': st.session_state.tab_client.client_id,
+                'client_secret': st.session_state.tab_client.client_secret,
+                'username': account_number,
+                'password': password
             }
             
-            response = st.session_state.tab_client.session.post(
-                f"{st.session_state.tab_client.base_url}/v1/tab-info-service/login",
-                json={
-                    'accountNumber': account_number,
-                    'password': password
-                },
-                headers=headers
-            )
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            }
             
-            # Log response details for debugging (without sensitive info)
-            logger.info(f"Login response status: {response.status_code}")
-            
-            if response.status_code == 200:
-                try:
+            try:
+                response = st.session_state.tab_client.session.post(
+                    url,
+                    data=data,
+                    headers=headers,
+                    timeout=30
+                )
+                
+                # Log response status (without sensitive info)
+                logger.info(f"OAuth response status: {response.status_code}")
+                
+                if response.status_code == 200:
                     auth_data = response.json()
-                    if auth_data.get('token'):
-                        st.session_state.account_token = auth_data['token']
+                    if auth_data.get('access_token'):
+                        st.session_state.tab_client.bearer_token = auth_data['access_token']
+                        st.session_state.tab_client.token_expiry = datetime.now(pytz.UTC) + timedelta(seconds=auth_data.get('expires_in', 3600))
                         return True
-                except Exception as e:
-                    logger.error(f"Failed to parse login response: {str(e)}")
-                    return False
-            elif response.status_code == 401:
-                logger.error("Invalid credentials")
+                        
                 return False
-            else:
-                logger.error(f"Login failed with status {response.status_code}")
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"OAuth request failed: {str(e)}")
                 return False
                 
         except Exception as e:
