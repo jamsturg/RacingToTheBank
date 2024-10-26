@@ -8,6 +8,7 @@ import logging
 from tab_api_client import TABApiClient, APIError
 import pytz
 import requests
+import time  # Added missing import
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,24 +16,43 @@ logger = logging.getLogger(__name__)
 
 class AccountManager:
     def __init__(self):
-        if 'account' not in st.session_state:
-            st.session_state.account = None
-        if 'logged_in' not in st.session_state:
-            st.session_state.logged_in = False
-        if 'tab_client' not in st.session_state:
-            st.session_state.tab_client = None
-        if 'account_token' not in st.session_state:
-            st.session_state.account_token = None
+        # Initialize session state variables
+        self._init_session_state()
+
+    def _init_session_state(self):
+        """Initialize all required session state variables"""
+        session_vars = {
+            'account': None,
+            'logged_in': False,
+            'tab_client': None,
+            'account_token': None,
+            'login_error': None,
+            'auth_attempts': 0,
+            'last_balance_check': None,
+            'loading_state': False
+        }
+        
+        for var, default in session_vars.items():
+            if var not in st.session_state:
+                st.session_state[var] = default
 
     def _validate_login(self, account_number: str, password: str) -> bool:
-        """Validate login credentials using TAB API"""
         try:
-            # Initialize API client
             if not st.session_state.tab_client:
                 st.session_state.tab_client = TABApiClient()
                 
-            # Prepare OAuth password grant request
             url = f"{st.session_state.tab_client.base_url}/oauth/token"
+            
+            # Validate credentials before making request
+            if not all([
+                st.session_state.tab_client.client_id,
+                st.session_state.tab_client.client_secret,
+                account_number,
+                password
+            ]):
+                logger.error("Missing required credentials")
+                return False
+                
             data = {
                 'grant_type': 'password',
                 'client_id': st.session_state.tab_client.client_id,
@@ -47,54 +67,104 @@ class AccountManager:
             }
             
             try:
-                response = st.session_state.tab_client.session.post(
+                response = requests.post(
                     url,
                     data=data,
                     headers=headers,
                     timeout=30
                 )
                 
-                # Log response status (without sensitive info)
                 logger.info(f"OAuth response status: {response.status_code}")
                 
                 if response.status_code == 200:
-                    auth_data = response.json()
-                    if auth_data.get('access_token'):
+                    try:
+                        auth_data = response.json()
+                        if not auth_data.get('access_token'):
+                            logger.error("Missing access token in response")
+                            return False
+                            
                         st.session_state.tab_client.bearer_token = auth_data['access_token']
-                        st.session_state.tab_client.token_expiry = datetime.now(pytz.UTC) + timedelta(seconds=auth_data.get('expires_in', 3600))
+                        st.session_state.tab_client.token_expiry = (
+                            datetime.now(pytz.UTC) + 
+                            timedelta(seconds=auth_data.get('expires_in', 3600))
+                        )
+                        
+                        if refresh_token := auth_data.get('refresh_token'):
+                            st.session_state.tab_client.refresh_token = refresh_token
+                            
                         return True
                         
-                return False
-                
+                    except ValueError as e:
+                        logger.error(f"Failed to parse auth response: {str(e)}")
+                        return False
+                        
+                elif response.status_code == 401:
+                    logger.error("Invalid credentials")
+                    st.session_state.login_error = "Invalid account number or password"
+                    return False
+                elif response.status_code == 400:
+                    error_data = response.json()
+                    error_msg = error_data.get('error_description', 'Unknown error')
+                    logger.error(f"Bad request: {error_msg}")
+                    st.session_state.login_error = f"Login error: {error_msg}"
+                    return False
+                else:
+                    logger.error(f"Auth failed with status {response.status_code}")
+                    st.session_state.login_error = "Authentication failed. Please try again."
+                    return False
+                    
             except requests.exceptions.RequestException as e:
                 logger.error(f"OAuth request failed: {str(e)}")
+                st.session_state.login_error = "Connection error. Please try again later."
                 return False
                 
         except Exception as e:
             logger.error(f"Login error: {str(e)}")
+            st.session_state.login_error = "An unexpected error occurred. Please try again."
+            return False
+
+    def _validate_account_data(self, account_data: Dict) -> bool:
+        """Validate account data structure"""
+        required_fields = ['balance', 'pending_bets', 'bet_history']
+        
+        try:
+            if not all(field in account_data for field in required_fields):
+                logger.error("Missing required account data fields")
+                return False
+                
+            if not isinstance(account_data['balance'], (int, float, Decimal)):
+                logger.error("Invalid balance data type")
+                return False
+                
+            if not isinstance(account_data['pending_bets'], list):
+                logger.error("Invalid pending bets data type")
+                return False
+                
+            if not isinstance(account_data['bet_history'], list):
+                logger.error("Invalid bet history data type")
+                return False
+                
+            return True
+            
+        except Exception as e:
+            logger.error(f"Account data validation error: {str(e)}")
             return False
 
     def _load_account(self, account_number: str) -> Dict:
-        """Load account details from TAB API"""
+        """Load account details with improved error handling"""
         if not st.session_state.tab_client:
             raise ValueError("TAB API client not initialized")
             
         try:
             # Get account info with proper error handling
             try:
+                st.session_state.loading_state = True
+                
                 account_info = st.session_state.tab_client.get_account_balance()
-                if account_info.get('error'):
-                    raise APIError(f"Failed to get account balance: {account_info['error']}")
-
                 pending_bets = st.session_state.tab_client.get_pending_bets()
-                if pending_bets.get('error'):
-                    raise APIError(f"Failed to get pending bets: {pending_bets['error']}")
-
                 bet_history = st.session_state.tab_client.get_bet_history()
-                if bet_history.get('error'):
-                    raise APIError(f"Failed to get bet history: {bet_history['error']}")
-
-                return {
+                
+                account_data = {
                     'user_id': account_info.get('accountId', ''),
                     'account_number': account_number,
                     'balance': Decimal(str(account_info.get('balance', 0))),
@@ -102,10 +172,19 @@ class AccountManager:
                     'bet_history': bet_history.get('bets', []),
                     'preferences': account_info.get('preferences', {})
                 }
+                
+                if not self._validate_account_data(account_data):
+                    raise ValueError("Invalid account data structure")
+                    
+                st.session_state.last_balance_check = datetime.now(pytz.UTC)
+                return account_data
+                
             except APIError as e:
                 logger.error(f"API error while loading account: {str(e)}")
                 raise
-            
+            finally:
+                st.session_state.loading_state = False
+                
         except Exception as e:
             logger.error(f"Unexpected error loading account: {str(e)}")
             raise
@@ -118,30 +197,55 @@ class AccountManager:
                 st.title("🏇 Racing Analysis Platform")
                 st.subheader("Login")
                 
+                # Show any existing error message
+                if st.session_state.login_error:
+                    st.error(st.session_state.login_error)
+                    st.session_state.login_error = None
+                
                 with st.form("login_form", clear_on_submit=True):
-                    account_number = st.text_input("TAB Account Number", key="login_account")
-                    password = st.text_input("Password", type="password", key="login_password")
+                    account_number = st.text_input("TAB Account Number")
+                    password = st.text_input("Password", type="password")
                     
                     if st.form_submit_button("Login", use_container_width=True):
                         if account_number and password:
-                            with st.spinner("Authenticating..."):
+                            st.session_state.auth_attempts += 1
+                            
+                            # Add rate limiting
+                            if st.session_state.auth_attempts > 5:
+                                st.error("Too many login attempts. Please try again later.")
+                                time.sleep(5)  # Add delay after multiple attempts
+                            else:
+                                # Show loading state instead of using spinner
+                                st.session_state.loading_state = True
                                 if self._validate_login(account_number, password):
                                     try:
                                         account_data = self._load_account(account_number)
                                         st.session_state.logged_in = True
                                         st.session_state.account = account_data
+                                        st.session_state.auth_attempts = 0
                                         st.success("Login successful!")
+                                        st.session_state.loading_state = False
                                         st.rerun()
                                     except Exception as e:
                                         st.error(f"Failed to load account: {str(e)}")
-                                else:
-                                    st.error("Invalid account number or password")
+                                st.session_state.loading_state = False
                         else:
                             st.error("Please enter both account number and password")
                 
-                # Add some helper text
+                # Show loading indicator
+                if st.session_state.loading_state:
+                    st.info("Authenticating...")
+                
+                # Add helper text
                 st.markdown("---")
-                st.markdown("Need help? [Contact TAB Support](https://tab.com.au/help)")
+                st.markdown("""
+                    Need help? [Contact TAB Support](https://tab.com.au/help)
+                    
+                    Having trouble logging in?
+                    - Make sure your account number and password are correct
+                    - Check if you have API access enabled
+                    - Contact support if you continue having issues
+                """)
         else:
             self.render_account_summary()
 
@@ -153,25 +257,37 @@ class AccountManager:
         st.sidebar.subheader("Account")
         
         try:
-            # Refresh account data
-            account_info = st.session_state.tab_client.get_account_balance()
-            
-            if account_info.get('error'):
-                st.sidebar.error("Failed to refresh account data")
-                balance = st.session_state.account['balance']
+            # Check if we need to refresh account data (every 5 minutes)
+            if (st.session_state.last_balance_check is None or 
+                datetime.now(pytz.UTC) - st.session_state.last_balance_check > timedelta(minutes=5)):
+                
+                # Show loading state instead of using spinner
+                st.session_state.loading_state = True
+                account_info = st.session_state.tab_client.get_account_balance()
+                st.session_state.loading_state = False
+                
+                if account_info.get('error'):
+                    st.sidebar.warning("Unable to refresh account data")
+                    balance = st.session_state.account['balance']
+                else:
+                    balance = Decimal(str(account_info.get('balance', 0)))
+                    st.session_state.account['balance'] = balance
+                    st.session_state.last_balance_check = datetime.now(pytz.UTC)
             else:
-                balance = Decimal(str(account_info.get('balance', 0)))
-                st.session_state.account['balance'] = balance
+                balance = st.session_state.account['balance']
 
             st.sidebar.metric("Balance", f"${balance:,.2f}")
             
             # Quick stats
             cols = st.sidebar.columns(2)
             with cols[0]:
-                st.metric("Pending Bets", len(st.session_state.account['pending_bets']))
+                pending_count = len(st.session_state.account['pending_bets'])
+                st.metric("Pending Bets", pending_count)
             with cols[1]:
                 today_pl = self._calculate_daily_pl()
-                st.metric("Today's P/L", f"${today_pl:,.2f}", delta=f"{today_pl:,.2f}")
+                st.metric("Today's P/L", f"${today_pl:,.2f}", 
+                         delta=f"{today_pl:,.2f}", 
+                         delta_color="normal")
             
         except Exception as e:
             logger.error(f"Error rendering account summary: {str(e)}")
@@ -203,8 +319,15 @@ class AccountManager:
 
     def logout(self):
         """Log out current user and clear session state"""
+        session_vars = [
+            'logged_in', 'account', 'tab_client', 'account_token',
+            'login_error', 'auth_attempts', 'last_balance_check',
+            'loading_state'
+        ]
+        
+        for var in session_vars:
+            if var in st.session_state:
+                st.session_state[var] = None
+                
         st.session_state.logged_in = False
-        st.session_state.account = None
-        st.session_state.tab_client = None
-        st.session_state.account_token = None
         st.rerun()
