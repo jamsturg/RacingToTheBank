@@ -50,11 +50,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     menu_items={
         'About': 'Racing Analysis Platform'
-    },
-    # Add WebSocket configuration
-    websocket_ping_interval=30,
-    websocket_ping_timeout=120,
-    websocket_max_message_size=5242880
+    }
 )
 
 def initialize_session_state():
