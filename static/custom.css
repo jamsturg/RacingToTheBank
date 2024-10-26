@@ -119,7 +119,6 @@
     30%, 70% { transform: translateX(1px); }
     45%, 55% { transform: translateX(-0.5px); }
     50% { transform: translateX(0.5px); }
-    50% { transform: translateX(0); }
 }
 
 /* Style the form inputs */
