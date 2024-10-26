@@ -32,5 +32,5 @@ run = ["sh", "-c", "streamlit run --server.address 0.0.0.0 --server.headless tru
 deploymentTarget = "cloudrun"
 
 [[ports]]
-localPort = 8501
+localPort = 5000
 externalPort = 80
