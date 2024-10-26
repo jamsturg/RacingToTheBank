@@ -123,3 +123,47 @@ class PuntingFormAPI:
             "/races/next",
             params=params
         )
+import requests
+import logging
+from typing import Dict, Optional
+
+class PuntingFormAPI:
+    """API client for Punting Form racing data"""
+    
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.puntingform.com.au/v1"
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json"
+        })
+        self.logger = logging.getLogger(__name__)
+
+    def verify_credentials(self) -> bool:
+        """Verify API credentials are valid"""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/status",
+                timeout=10
+            )
+            return response.status_code == 200
+        except Exception as e:
+            self.logger.error(f"Credential verification failed: {str(e)}")
+            return False
+            
+    def get_next_races(self, jurisdiction: str = "ALL", limit: int = 10) -> Dict:
+        """Get upcoming races"""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/races/next",
+                params={
+                    "jurisdiction": jurisdiction,
+                    "limit": limit
+                },
+                timeout=10
+            )
+            return response.json()
+        except Exception as e:
+            self.logger.error(f"Error fetching next races: {str(e)}")
+            return {"error": str(e)}

@@ -18,7 +18,11 @@ import logging
 import json
 
 # Local imports
-from punting_form_analyzer import PuntingFormAPI
+try:
+    from punting_form_analyzer import PuntingFormAPI
+except ImportError:
+    st.error("Missing PuntingFormAPI implementation")
+    raise
 from account_management import AccountManager
 from utils.date_utils import format_date, format_countdown
 from utils.race_details import render_race_details
