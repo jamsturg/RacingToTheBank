@@ -1,11 +1,53 @@
 [server]
 headless = true
-address = "0.0.0.0"
 port = 8501
+address = "0.0.0.0"
+maxUploadSize = 10
+enableCORS = true
+enableXsrfProtection = true
+maxMessageSize = 10
+baseUrlPath = ""
+enableWebsocketCompression = true
+fileWatcherType = "none"
+
+[global]
+developmentMode = false
+disableWatchdogWarning = true
+showWarningOnDirectExecution = false
+dataFrameSerialization = "legacy"
+
+[browser]
+gatherUsageStats = false
+serverAddress = "0.0.0.0"
+serverPort = 8501
 
 [theme]
+base = "light"
 primaryColor = "#1E88E5"
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F0F2F6"
 textColor = "#262730"
 font = "sans serif"
+
+[runner]
+magicEnabled = false
+fastReruns = false
+enforceSerializableSessionState = true
+postScriptGC = true
+beforeRun = "gc.collect()"
+memory.limit = 64
+
+[logger]
+level = "error"
+messageFormat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = false
+caching = true
+
+[caching]
+enable = true
+memoryLimit = 32
+diskLimit = 64
+ttl = 60

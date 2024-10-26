@@ -24,7 +24,7 @@ agentRequireRestartOnSave = false
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "streamlit run main.py"
+args = "streamlit run main.py --server.maxUploadSize=25 --server.maxMessageSize=25 --server.memory_limit=64"
 waitForPort = 8501
 
 [deployment]

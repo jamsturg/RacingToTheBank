@@ -14,6 +14,7 @@ if str(project_root) not in sys.path:
 import streamlit as st
 import base64
 from pathlib import Path
+from utils.resource_manager import resource_manager, optimize_streamlit_cache, monitor_performance
 
 # Load custom CSS
 def load_css():
@@ -21,6 +22,7 @@ def load_css():
     if css_file.exists():
         with open(css_file) as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
 from datetime import datetime, date
 from typing import Dict, List, Optional, Union
 import logging
@@ -51,7 +53,7 @@ logger = setup_logger(
     level=logging.INFO
 )
 
-# Page config
+# Page config with reduced memory usage
 st.set_page_config(
     page_title="To The Bank",
     page_icon="💰",
@@ -62,8 +64,9 @@ st.set_page_config(
     }
 )
 
+@monitor_performance
 def initialize_session_state():
-    """Initialize and validate session state variables"""
+    """Initialize and validate session state variables with resource monitoring"""
     # Define session variables and their default values
     session_vars = {
         'initialized': True,
@@ -102,8 +105,9 @@ def initialize_session_state():
             # Clear old variables not in current session_vars
             del st.session_state[var]
 
+@monitor_performance
 def initialize_client() -> Optional[PuntingFormAPI]:
-    """Initialize API client with proper error handling"""
+    """Initialize API client with resource monitoring"""
     if not st.session_state.logged_in:
         return None
         
@@ -140,88 +144,7 @@ def initialize_client() -> Optional[PuntingFormAPI]:
             
     return st.session_state.client
 
-def handle_api_response(response: Dict) -> Optional[Dict]:
-    """Handle API response with proper error handling"""
-    if isinstance(response, dict):
-        if error := response.get('error'):
-            error_msg = error if isinstance(error, str) else json.dumps(error)
-            st.error(f"API Error: {error_msg}")
-            logger.error(f"API Error: {error_msg}")
-            return None
-        return response
-    else:
-        st.error("Invalid API response format")
-        logger.error(f"Invalid API response format: {type(response)}")
-        return None
-
-def render_race_list(race_type: str):
-    """Render list of upcoming races with improved error handling"""
-    if not st.session_state.logged_in:
-        return
-
-    if st.session_state.account.get('user_id') == 'guest':
-        st.info("Please login with a TAB account to view live race data")
-        return
-        
-    with st.spinner("Loading races..."):
-        try:
-            races = st.session_state.client.get_next_races(
-                jurisdiction="NSW",
-                limit=5
-            )
-            
-            races = handle_api_response(races)
-            if not races:
-                return
-                
-            if not (race_list := races.get('races', [])):
-                st.info("No upcoming races found")
-                return
-                
-            for idx, race in enumerate(race_list):
-                if race.get('raceType') == race_type:
-                    with st.container():
-                        col1, col2, col3 = st.columns([3, 2, 1])
-                        with col1:
-                            st.write(f"R{race.get('raceNumber')} {race.get('venueName', 'Unknown')}")
-                        with col2:
-                            start_time = format_date(race.get('startTime'), include_time=True)
-                            countdown = format_countdown(start_time)
-                            st.write(countdown)
-                        with col3:
-                            if st.button("View", key=f"view_{race_type}_{idx}"):
-                                st.session_state.selected_race = race
-                
-        except Exception as e:
-            logger.error(f"Error loading races: {str(e)}")
-            st.error("Unable to load races. Please try again later.")
-            if st.session_state.client:
-                # Attempt to reinitialize client on error
-                st.session_state.client = None
-                initialize_client()
-
-def render_next_to_jump():
-    """Render Next To Jump section with tabs"""
-    col1, col2 = st.columns([2,3])
-    
-    with col1:
-        st.subheader("Next To Jump")
-        tab1, tab2, tab3 = st.tabs(["Horses", "Greyhounds", "Harness"])
-        
-        with tab1:
-            render_race_list("R")  # Thoroughbred races
-        
-        with tab2:
-            render_race_list("G")  # Greyhound races
-        
-        with tab3:
-            render_race_list("H")  # Harness races
-            
-    with col2:
-        if st.session_state.selected_race:
-            from utils.race_details import render_race_details
-            render_race_details(st.session_state.selected_race)
-
+@monitor_performance
 def main():
     try:
         # Load custom CSS
@@ -230,35 +153,48 @@ def main():
         # Initialize session state first
         initialize_session_state()
         
+        # Optimize cache periodically
+        optimize_streamlit_cache()
+        
         # Initialize account manager
         account_manager = AccountManager()
         
         # Show login form and require login before proceeding
         account_manager.render_login()
-    except ImportError as e:
-        st.error(f"Failed to initialize: {str(e)}")
-        st.info("Please install required dependencies using: pip install --user pandas plotly streamlit")
-    
-    # Only proceed with API initialization and content if logged in
-    if st.session_state.logged_in:
-        if st.session_state.account and st.session_state.account.get('user_id') != 'guest':
-            if st.session_state.client is None:
-                initialize_client()
+
+        # Monitor resource usage
+        memory_usage = resource_manager.get_memory_usage()
+        cpu_usage = resource_manager.get_cpu_usage()
         
-        # Main content
-        st.markdown("""
-            <h1 style='text-align: center; color: #1E88E5; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);'>
-                💰 To The Bank
-            </h1>
-            <p style='text-align: center; font-style: italic; color: #666;'>
-                Your path to smarter racing investments
-            </p>
-            """, unsafe_allow_html=True)
-        
-        if st.session_state.active_tab == "Racing":
-            render_next_to_jump()
-    else:
-        st.info("Please log in to access racing information")
+        if memory_usage['rss'] > 1500:  # If memory usage exceeds 1.5GB
+            logger.warning("High memory usage detected, performing cleanup")
+            resource_manager.cleanup()
+            
+        # Only proceed with API initialization and content if logged in
+        if st.session_state.logged_in:
+            if st.session_state.account and st.session_state.account.get('user_id') != 'guest':
+                if st.session_state.client is None:
+                    initialize_client()
+            
+            # Main content
+            st.markdown("""
+                <h1 style='text-align: center; color: #1E88E5; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);'>
+                    💰 To The Bank
+                </h1>
+                <p style='text-align: center; font-style: italic; color: #666;'>
+                    Your path to smarter racing investments
+                </p>
+                """, unsafe_allow_html=True)
+            
+            if st.session_state.active_tab == "Racing":
+                render_next_to_jump()
+        else:
+            st.info("Please log in to access racing information")
+            
+    except Exception as e:
+        logger.error(f"Application error: {str(e)}", exc_info=True)
+        st.error("An unexpected error occurred. Please try again.")
+        resource_manager.cleanup()
 
 if __name__ == "__main__":
     main()
