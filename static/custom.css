@@ -25,75 +25,122 @@
 /* Login Page Styling */
 .login-container {
     text-align: center;
-    padding: 2rem;
-    margin-bottom: 2rem;
+    padding: 3rem 2rem;
+    margin: 2rem auto;
+    max-width: 1200px;
+    animation: fadeIn 0.8s ease-out;
 }
 
 .login-container h1 {
-    color: var(--card);
-    font-size: 3.5rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    color: var(--primary);
+    font-size: 4rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    text-shadow: 2px 2px 4px var(--shadow-color);
+    letter-spacing: 1px;
 }
 
 .login-container h3 {
-    color: var(--secondary);
-    font-size: 1.5rem;
-    font-weight: 400;
+    color: var(--accent);
+    font-size: 1.75rem;
+    font-weight: 500;
     margin-top: 0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 .login-form {
     background: var(--card);
-    border-radius: 12px;
-    padding: 2rem;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-    max-width: 400px;
-    margin: 0 auto;
+    border-radius: 16px;
+    padding: 2.5rem;
+    box-shadow: 0 12px 24px var(--shadow-color);
+    max-width: 450px;
+    margin: 2rem auto;
+    border: 1px solid rgba(197, 202, 233, 0.3);
+    backdrop-filter: blur(10px);
+    transform: translateY(0);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-form:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 16px 32px var(--shadow-color);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .login-form .stButton button {
     width: 100%;
-    margin-top: 1rem;
-    margin-bottom: 1rem;
-    background: linear-gradient(45deg, var(--primary), var(--accent));
+    margin: 1.5rem 0;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     color: white;
     border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 25px;
-    font-weight: 500;
-    transition: all 0.3s ease;
+    padding: 1rem 2rem;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
 
 .login-form .stButton button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px var(--shadow-color);
+    background: linear-gradient(135deg, var(--accent), var(--primary));
+}
+
+.login-form .stButton button:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px var(--shadow-color);
 }
 
 .login-error {
-    background: rgba(231, 76, 60, 0.1);
-    border-left: 4px solid #e74c3c;
-    color: #e74c3c;
-    padding: 1rem;
-    border-radius: 4px;
-    margin-bottom: 1rem;
+    background: rgba(244, 67, 54, 0.1);
+    border: 2px solid var(--danger);
+    color: var(--danger);
+    padding: 1.25rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+    font-weight: 500;
+    text-align: center;
+    animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
 }
 
 /* Style the form inputs */
 .login-form .stTextInput input {
-    background: rgba(255,255,255,0.9);
-    border: 1px solid #e1e1e1;
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    font-size: 1rem;
+    background: rgba(255,255,255,0.95);
+    border: 2px solid var(--secondary);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    font-size: 1.1rem;
     width: 100%;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-dark);
+    letter-spacing: 0.5px;
 }
 
 .login-form .stTextInput input:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(79, 112, 156, 0.2);
+    box-shadow: 0 0 0 4px rgba(57, 73, 171, 0.15);
+    transform: translateY(-1px);
+}
+
+.login-form .stTextInput input::placeholder {
+    color: var(--secondary);
+    opacity: 0.8;
 }
 
 /* Divider styling */
