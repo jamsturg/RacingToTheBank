@@ -1,15 +1,16 @@
 /* Enhanced Theme Colors */
 :root {
-    --primary: #0A2647;      /* Dark Blue */
-    --secondary: #8EACCD;    /* Light Blue Grey */
-    --accent: #4F709C;       /* Medium Blue */
-    --background: #213555;   /* Navy Blue */
-    --card: #FFFFFF;         /* White */
-    --text: #D8D9DA;        /* Light Grey */
-    --text-dark: #213555;   /* Navy Blue for text on light bg */
-    --success: #27AE60;
-    --warning: #F1C40F;
-    --danger: #E74C3C;
+    --primary: #1a237e;      /* Deep Indigo */
+    --secondary: #c5cae9;    /* Light Indigo */
+    --accent: #3949ab;       /* Bright Indigo */
+    --background: #e8eaf6;   /* Lightest Indigo */
+    --card: #ffffff;         /* Pure White */
+    --text: #283593;        /* Dark Indigo */
+    --text-dark: #1a237e;   /* Deep Indigo */
+    --success: #4caf50;     /* Material Green */
+    --warning: #ff9800;     /* Material Orange */
+    --danger: #f44336;      /* Material Red */
+    --shadow-color: rgba(26, 35, 126, 0.2); /* Indigo Shadow */
 }
 
 /* Custom Fonts */
