@@ -145,5 +145,5 @@ def main():
 
 if __name__ == "__main__":
     import streamlit.web.bootstrap as bootstrap
-    # Use a different port since 5000 is in use
+    # Use port 8501 which is Streamlit's default port
     bootstrap.run(main, "", [], port=8501)
