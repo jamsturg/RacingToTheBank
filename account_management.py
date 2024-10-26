@@ -19,26 +19,37 @@ class AccountManager:
             st.session_state.logged_in = False
         if 'tab_client' not in st.session_state:
             st.session_state.tab_client = None
+        if 'account_token' not in st.session_state:
+            st.session_state.account_token = None
 
-    def _validate_login(self, username: str, password: str) -> bool:
+    def _validate_login(self, account_number: str, password: str) -> bool:
         """Validate login credentials using TAB API"""
         try:
-            # Initialize API client
+            # Initialize API client with OAuth credentials
             if not st.session_state.tab_client:
                 st.session_state.tab_client = TABApiClient()
             
-            # Verify credentials
-            if not st.session_state.tab_client.verify_credentials():
-                logger.error("Failed to verify API credentials")
-                return False
+            # Make authentication request to TAB API
+            response = st.session_state.tab_client.session.post(
+                f"{st.session_state.tab_client.base_url}/v1/account/login",
+                json={
+                    'accountNumber': account_number,
+                    'password': password
+                }
+            )
+            
+            if response.status_code == 200:
+                auth_data = response.json()
+                st.session_state.account_token = auth_data.get('token')
+                return True
                 
-            return True
+            return False
             
         except Exception as e:
             logger.error(f"Login error: {str(e)}")
             return False
 
-    def _load_account(self, username: str) -> Dict:
+    def _load_account(self, account_number: str) -> Dict:
         """Load account details from TAB API"""
         if not st.session_state.tab_client:
             raise ValueError("TAB API client not initialized")
@@ -60,7 +71,7 @@ class AccountManager:
 
                 return {
                     'user_id': account_info.get('accountId', ''),
-                    'username': username,
+                    'account_number': account_number,
                     'balance': Decimal(str(account_info.get('balance', 0))),
                     'pending_bets': pending_bets.get('bets', []),
                     'bet_history': bet_history.get('bets', []),
@@ -83,15 +94,15 @@ class AccountManager:
                 st.subheader("Login")
                 
                 with st.form("login_form", clear_on_submit=True):
-                    username = st.text_input("Username", key="login_username")
+                    account_number = st.text_input("TAB Account Number", key="login_account")
                     password = st.text_input("Password", type="password", key="login_password")
                     
                     if st.form_submit_button("Login", use_container_width=True):
-                        if username and password:
+                        if account_number and password:
                             with st.spinner("Authenticating..."):
-                                if self._validate_login(username, password):
+                                if self._validate_login(account_number, password):
                                     try:
-                                        account_data = self._load_account(username)
+                                        account_data = self._load_account(account_number)
                                         st.session_state.logged_in = True
                                         st.session_state.account = account_data
                                         st.success("Login successful!")
@@ -99,13 +110,13 @@ class AccountManager:
                                     except Exception as e:
                                         st.error(f"Failed to load account: {str(e)}")
                                 else:
-                                    st.error("Invalid credentials")
+                                    st.error("Invalid account number or password")
                         else:
-                            st.error("Please enter both username and password")
+                            st.error("Please enter both account number and password")
                 
                 # Add some helper text
                 st.markdown("---")
-                st.markdown("Need help? Contact support")
+                st.markdown("Need help? [Contact TAB Support](https://tab.com.au/help)")
         else:
             self.render_account_summary()
 
@@ -170,4 +181,5 @@ class AccountManager:
         st.session_state.logged_in = False
         st.session_state.account = None
         st.session_state.tab_client = None
+        st.session_state.account_token = None
         st.rerun()
