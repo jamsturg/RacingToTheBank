@@ -12,6 +12,15 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 import streamlit as st
+import base64
+from pathlib import Path
+
+# Load custom CSS
+def load_css():
+    css_file = Path(__file__).parent / "static" / "custom.css"
+    if css_file.exists():
+        with open(css_file) as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 from datetime import datetime, date
 from typing import Dict, List, Optional, Union
 import logging
@@ -44,8 +53,8 @@ logger = setup_logger(
 
 # Page config
 st.set_page_config(
-    page_title="Racing Analysis Platform",
-    page_icon="🏇",
+    page_title="To The Bank",
+    page_icon="💰",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
@@ -215,6 +224,9 @@ def render_next_to_jump():
 
 def main():
     try:
+        # Load custom CSS
+        load_css()
+        
         # Initialize session state first
         initialize_session_state()
         
@@ -229,12 +241,19 @@ def main():
     
     # Only proceed with API initialization and content if logged in
     if st.session_state.logged_in:
-        if st.session_state.account.get('user_id') != 'guest':
+        if st.session_state.account and st.session_state.account.get('user_id') != 'guest':
             if st.session_state.client is None:
                 initialize_client()
         
         # Main content
-        st.title("🏇 Racing Analysis Platform")
+        st.markdown("""
+            <h1 style='text-align: center; color: #1E88E5; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);'>
+                💰 To The Bank
+            </h1>
+            <p style='text-align: center; font-style: italic; color: #666;'>
+                Your path to smarter racing investments
+            </p>
+            """, unsafe_allow_html=True)
         
         if st.session_state.active_tab == "Racing":
             render_next_to_jump()
