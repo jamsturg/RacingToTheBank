@@ -1,11 +1,21 @@
+import os
+import sys
+from pathlib import Path
+
+# Ensure we're not in numpy source directory
+if 'numpy' in os.getcwd():
+    os.chdir(str(Path.home()))
+
+# Add the project root to Python path
+project_root = Path(__file__).parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import streamlit as st
 from datetime import datetime, date
 from typing import Dict, List, Optional, Union
 import logging
 import json
-from pathlib import Path
-import sys
-import os
 
 # Local imports
 from punting_form_analyzer import PuntingFormAPI
