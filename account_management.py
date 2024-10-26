@@ -47,7 +47,7 @@ class AccountManager(LoggerMixin):
                 account_number,
                 password
             ]):
-                logger.error("Missing required credentials")
+                self.logger.error("Missing required credentials")
                 return False
                 
             data = {
@@ -71,13 +71,13 @@ class AccountManager(LoggerMixin):
                     timeout=30
                 )
                 
-                logger.info(f"OAuth response status: {response.status_code}")
+                self.logger.info(f"OAuth response status: {response.status_code}")
                 
                 if response.status_code == 200:
                     try:
                         auth_data = response.json()
                         if not auth_data.get('access_token'):
-                            logger.error("Missing access token in response")
+                            self.logger.error("Missing access token in response")
                             return False
                             
                         st.session_state.tab_client.bearer_token = auth_data['access_token']
@@ -92,31 +92,31 @@ class AccountManager(LoggerMixin):
                         return True
                         
                     except ValueError as e:
-                        logger.error(f"Failed to parse auth response: {str(e)}")
+                        self.logger.error(f"Failed to parse auth response: {str(e)}")
                         return False
                         
                 elif response.status_code == 401:
-                    logger.error("Invalid credentials")
+                    self.logger.error("Invalid credentials")
                     st.session_state.login_error = "Invalid account number or password"
                     return False
                 elif response.status_code == 400:
                     error_data = response.json()
                     error_msg = error_data.get('error_description', 'Unknown error')
-                    logger.error(f"Bad request: {error_msg}")
+                    self.logger.error(f"Bad request: {error_msg}")
                     st.session_state.login_error = f"Login error: {error_msg}"
                     return False
                 else:
-                    logger.error(f"Auth failed with status {response.status_code}")
+                    self.logger.error(f"Auth failed with status {response.status_code}")
                     st.session_state.login_error = "Authentication failed. Please try again."
                     return False
                     
             except requests.exceptions.RequestException as e:
-                logger.error(f"OAuth request failed: {str(e)}")
+                self.logger.error(f"OAuth request failed: {str(e)}")
                 st.session_state.login_error = "Connection error. Please try again later."
                 return False
                 
         except Exception as e:
-            logger.error(f"Login error: {str(e)}")
+            self.logger.error(f"Login error: {str(e)}")
             st.session_state.login_error = "An unexpected error occurred. Please try again."
             return False
 
@@ -126,25 +126,25 @@ class AccountManager(LoggerMixin):
         
         try:
             if not all(field in account_data for field in required_fields):
-                logger.error("Missing required account data fields")
+                self.logger.error("Missing required account data fields")
                 return False
                 
             if not isinstance(account_data['balance'], (int, float, Decimal)):
-                logger.error("Invalid balance data type")
+                self.logger.error("Invalid balance data type")
                 return False
                 
             if not isinstance(account_data['pending_bets'], list):
-                logger.error("Invalid pending bets data type")
+                self.logger.error("Invalid pending bets data type")
                 return False
                 
             if not isinstance(account_data['bet_history'], list):
-                logger.error("Invalid bet history data type")
+                self.logger.error("Invalid bet history data type")
                 return False
                 
             return True
             
         except Exception as e:
-            logger.error(f"Account data validation error: {str(e)}")
+            self.logger.error(f"Account data validation error: {str(e)}")
             return False
 
     def _load_account(self, account_number: str) -> Dict:
@@ -177,13 +177,13 @@ class AccountManager(LoggerMixin):
                 return account_data
                 
             except APIError as e:
-                logger.error(f"API error while loading account: {str(e)}")
+                self.logger.error(f"API error while loading account: {str(e)}")
                 raise
             finally:
                 st.session_state.loading_state = False
                 
         except Exception as e:
-            logger.error(f"Unexpected error loading account: {str(e)}")
+            self.logger.error(f"Unexpected error loading account: {str(e)}")
             raise
 
     def render_login(self):
@@ -287,7 +287,7 @@ class AccountManager(LoggerMixin):
                          delta_color="normal")
             
         except Exception as e:
-            logger.error(f"Error rendering account summary: {str(e)}")
+            self.logger.error(f"Error rendering account summary: {str(e)}")
             st.sidebar.error("Failed to update account information")
 
         # Account actions
@@ -305,13 +305,13 @@ class AccountManager(LoggerMixin):
             # Get today's bet history
             history = st.session_state.tab_client.get_bet_history(start_date=today, end_date=today)
             if history.get('error'):
-                logger.error(f"Error getting bet history: {history['error']}")
+                self.logger.error(f"Error getting bet history: {history['error']}")
                 return 0.0
                 
             return sum(bet.get('profit', 0) for bet in history.get('bets', []))
             
         except Exception as e:
-            logger.error(f"Error calculating P/L: {str(e)}")
+            self.logger.error(f"Error calculating P/L: {str(e)}")
             return 0.0
 
     def logout(self):
