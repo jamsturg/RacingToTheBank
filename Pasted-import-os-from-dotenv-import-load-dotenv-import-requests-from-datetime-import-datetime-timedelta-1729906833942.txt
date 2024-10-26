@@ -1,0 +1,111 @@
+import os
+from dotenv import load_dotenv
+import requests
+from datetime import datetime, timedelta
+import pytz
+
+# Load environment variables
+load_dotenv()
+
+class RacingAPI:
+    def __init__(self):
+        self.base_url = "https://api.beta.tab.com.au"
+        self.client_id = os.getenv("TAB_CLIENT_ID")
+        self.client_secret = os.getenv("TAB_CLIENT_SECRET")
+        self.bearer_token = None
+        self.token_expiry = None
+
+    def get_bearer_token(self):
+        if self.bearer_token and datetime.now(pytz.UTC) < self.token_expiry:
+            return self.bearer_token
+
+        url = f"{self.base_url}/oauth/token"
+        data = {
+            'grant_type': 'client_credentials',
+            'client_id': self.client_id,
+            'client_secret': self.client_secret
+        }
+        try:
+            response = requests.post(url, data=data)
+            response.raise_for_status()
+            token_data = response.json()
+            self.bearer_token = token_data['access_token']
+            self.token_expiry = datetime.now(pytz.UTC) + timedelta(seconds=token_data['expires_in'])
+            return self.bearer_token
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to retrieve access token: {str(e)}")
+            return None
+
+    def fetch_race_data(self, meeting_date):
+        bearer_token = self.get_bearer_token()
+        if not bearer_token:
+            return None
+
+        url = f"{self.base_url}/v1/tab-info-service/racing/dates/{meeting_date}/meetings"
+        headers = {
+            'Authorization': f'Bearer {bearer_token}'
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to fetch race data: {str(e)}")
+            return None
+
+    def fetch_account_balance(self):
+        bearer_token = self.get_bearer_token()
+        if not bearer_token:
+            return None
+
+        url = f"{self.base_url}/v1/tab-account-service/account/balance"
+        headers = {
+            'Authorization': f'Bearer {bearer_token}'
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            balance_data = response.json()
+            return balance_data['balance']
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to fetch account balance: {str(e)}")
+            return None
+
+    def place_bet(self, horse_name, amount, race_id):
+        bearer_token = self.get_bearer_token()
+        if not bearer_token:
+            return None
+
+        url = f"{self.base_url}/v1/tab-bet-service/bet/place"
+        headers = {
+            'Authorization': f'Bearer {bearer_token}',
+            'Content-Type': 'application/json'
+        }
+        data = {
+            'horse_name': horse_name,
+            'bet_amount': amount,
+            'race_id': race_id
+        }
+        try:
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to place bet: {str(e)}")
+            return None
+
+# Example usage
+if __name__ == "__main__":
+    api = RacingAPI()
+    today = datetime.now().strftime('%Y-%m-%d')
+    race_data = api.fetch_race_data(today)
+    if race_data:
+        print("Successfully fetched race data")
+    else:
+        print("Failed to fetch race data")
+
+    balance = api.fetch_account_balance()
+    if balance is not None:
+        print(f"Account balance: ${balance:.2f}")
+    else:
+        print("Failed to fetch account balance")

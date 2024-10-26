@@ -17,59 +17,44 @@ class AccountManager:
             st.session_state.account = None
         if 'logged_in' not in st.session_state:
             st.session_state.logged_in = False
-        if 'bearer_token' not in st.session_state:
-            st.session_state.bearer_token = None
+        if 'tab_client' not in st.session_state:
+            st.session_state.tab_client = None
 
     def _validate_login(self, username: str, password: str) -> bool:
         """Validate login credentials using TAB API"""
         try:
             # Initialize API client
-            bearer_token = st.secrets.get("TAB_BEARER_TOKEN")
-            if not bearer_token:
-                logger.error("Missing TAB bearer token")
-                return False
-
-            # Create API client with bearer token
-            client = TABApiClient(bearer_token)
+            if not st.session_state.tab_client:
+                st.session_state.tab_client = TABApiClient()
             
-            # Verify authentication by making a test API call
-            try:
-                # Try to get account balance to verify credentials
-                account_info = client.get_account_balance()
-                if isinstance(account_info, dict) and not account_info.get('error'):
-                    # Store bearer token in session state
-                    st.session_state.bearer_token = bearer_token
-                    return True
-                else:
-                    logger.error("Failed to validate account access")
-                    return False
-            except APIError as e:
-                logger.error(f"API validation error: {str(e)}")
+            # Verify credentials
+            if not st.session_state.tab_client.verify_credentials():
+                logger.error("Failed to verify API credentials")
                 return False
-
+                
+            return True
+            
         except Exception as e:
             logger.error(f"Login error: {str(e)}")
             return False
 
     def _load_account(self, username: str) -> Dict:
         """Load account details from TAB API"""
-        if not st.session_state.bearer_token:
-            raise ValueError("No bearer token available")
+        if not st.session_state.tab_client:
+            raise ValueError("TAB API client not initialized")
             
         try:
-            client = TABApiClient(st.session_state.bearer_token)
-            
             # Get account info with proper error handling
             try:
-                account_info = client.get_account_balance()
+                account_info = st.session_state.tab_client.get_account_balance()
                 if account_info.get('error'):
                     raise APIError(f"Failed to get account balance: {account_info['error']}")
 
-                pending_bets = client.get_pending_bets()
+                pending_bets = st.session_state.tab_client.get_pending_bets()
                 if pending_bets.get('error'):
                     raise APIError(f"Failed to get pending bets: {pending_bets['error']}")
 
-                bet_history = client.get_bet_history()
+                bet_history = st.session_state.tab_client.get_bet_history()
                 if bet_history.get('error'):
                     raise APIError(f"Failed to get bet history: {bet_history['error']}")
 
@@ -92,34 +77,35 @@ class AccountManager:
     def render_login(self):
         """Render login interface with improved error handling"""
         if not st.session_state.logged_in:
-            st.sidebar.title("Login")
-            
-            # Check if bearer token is available
-            if not st.secrets.get("TAB_BEARER_TOKEN"):
-                st.sidebar.error("TAB API configuration is missing. Please contact support.")
-                return
-
-            with st.sidebar.form("login_form", clear_on_submit=True):
-                username = st.text_input("Username")
-                password = st.text_input("Password", type="password")
-                submit = st.form_submit_button("Login")
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.title("🏇 Racing Analysis Platform")
+                st.subheader("Login")
                 
-                if submit:
-                    if username and password:
-                        with st.spinner("Authenticating..."):
-                            if self._validate_login(username, password):
-                                try:
-                                    account_data = self._load_account(username)
-                                    st.session_state.logged_in = True
-                                    st.session_state.account = account_data
-                                    st.success("Logged in successfully!")
-                                    st.rerun()
-                                except Exception as e:
-                                    st.error(f"Failed to load account: {str(e)}")
-                            else:
-                                st.error("Invalid credentials or API error")
-                    else:
-                        st.error("Please enter both username and password")
+                with st.form("login_form", clear_on_submit=True):
+                    username = st.text_input("Username", key="login_username")
+                    password = st.text_input("Password", type="password", key="login_password")
+                    
+                    if st.form_submit_button("Login", use_container_width=True):
+                        if username and password:
+                            with st.spinner("Authenticating..."):
+                                if self._validate_login(username, password):
+                                    try:
+                                        account_data = self._load_account(username)
+                                        st.session_state.logged_in = True
+                                        st.session_state.account = account_data
+                                        st.success("Login successful!")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"Failed to load account: {str(e)}")
+                                else:
+                                    st.error("Invalid credentials")
+                        else:
+                            st.error("Please enter both username and password")
+                
+                # Add some helper text
+                st.markdown("---")
+                st.markdown("Need help? Contact support")
         else:
             self.render_account_summary()
 
@@ -132,8 +118,7 @@ class AccountManager:
         
         try:
             # Refresh account data
-            client = TABApiClient(st.session_state.bearer_token)
-            account_info = client.get_account_balance()
+            account_info = st.session_state.tab_client.get_account_balance()
             
             if account_info.get('error'):
                 st.sidebar.error("Failed to refresh account data")
@@ -166,11 +151,10 @@ class AccountManager:
             return 0.0
             
         try:
-            client = TABApiClient(st.session_state.bearer_token)
             today = datetime.now().strftime("%Y-%m-%d")
             
             # Get today's bet history
-            history = client.get_bet_history(start_date=today, end_date=today)
+            history = st.session_state.tab_client.get_bet_history(start_date=today, end_date=today)
             if history.get('error'):
                 logger.error(f"Error getting bet history: {history['error']}")
                 return 0.0
@@ -185,5 +169,5 @@ class AccountManager:
         """Log out current user and clear session state"""
         st.session_state.logged_in = False
         st.session_state.account = None
-        st.session_state.bearer_token = None
+        st.session_state.tab_client = None
         st.rerun()

@@ -1,9 +1,10 @@
 from typing import Dict, List, Optional, Union
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import logging
 import json
 import time
+import pytz
 from dataclasses import dataclass
 from enum import Enum
 import os
@@ -26,20 +27,41 @@ class APIError(Exception):
     pass
 
 class TABApiClient:
-    """TAB API Client implementing all available endpoints"""
+    """TAB API Client with OAuth authentication"""
     
-    def __init__(self, bearer_token: Optional[str] = None):
-        self.base_url = "https://api.tab.com.au/v1"
-        self.bearer_token = bearer_token or os.getenv("TAB_BEARER_TOKEN")
-        if not self.bearer_token:
-            raise ValueError("Bearer token must be provided or set in TAB_BEARER_TOKEN environment variable")
+    def __init__(self):
+        self.base_url = "https://api.beta.tab.com.au"
+        self.client_id = os.getenv("TAB_CLIENT_ID")
+        self.client_secret = os.getenv("TAB_CLIENT_SECRET")
+        if not self.client_id or not self.client_secret:
+            raise ValueError("TAB_CLIENT_ID and TAB_CLIENT_SECRET must be set in environment")
             
+        self.bearer_token = None
+        self.token_expiry = None
         self.session = requests.Session()
-        self.session.headers.update({
-            "Authorization": f"Bearer {self.bearer_token}",
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        })
+
+    def get_bearer_token(self) -> str:
+        """Get valid bearer token, refreshing if necessary"""
+        if self.bearer_token and self.token_expiry and datetime.now(pytz.UTC) < self.token_expiry:
+            return self.bearer_token
+
+        url = f"{self.base_url}/oauth/token"
+        data = {
+            'grant_type': 'client_credentials',
+            'client_id': self.client_id,
+            'client_secret': self.client_secret
+        }
+        
+        try:
+            response = requests.post(url, data=data, timeout=30)
+            response.raise_for_status()
+            token_data = response.json()
+            self.bearer_token = token_data['access_token']
+            self.token_expiry = datetime.now(pytz.UTC) + timedelta(seconds=token_data['expires_in'])
+            return self.bearer_token
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to retrieve access token: {str(e)}")
+            raise APIError(f"Authentication failed: {str(e)}")
 
     def _make_request(
         self,
@@ -49,8 +71,20 @@ class TABApiClient:
         data: Optional[Dict] = None,
         headers: Optional[Dict] = None
     ) -> Dict:
-        """Make API request with error handling and retries"""
+        """Make API request with automatic token refresh"""
         url = f"{self.base_url}{endpoint}"
+        
+        # Ensure we have a valid token
+        bearer_token = self.get_bearer_token()
+        
+        # Update headers with bearer token
+        request_headers = {
+            "Authorization": f"Bearer {bearer_token}",
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        if headers:
+            request_headers.update(headers)
         
         for attempt in range(3):
             try:
@@ -59,7 +93,7 @@ class TABApiClient:
                     url=url,
                     params=params,
                     json=data,
-                    headers=headers,
+                    headers=request_headers,
                     timeout=30
                 )
                 
@@ -70,12 +104,19 @@ class TABApiClient:
                         logger.error(f"Invalid JSON response: {str(e)}")
                         raise APIError(f"Invalid response format: {str(e)}")
                 elif response.status_code == 401:
-                    raise APIError("Authentication failed. Check your bearer token.")
+                    # Token might be expired, try to refresh and retry
+                    if attempt < 2:
+                        logger.info("Token expired, refreshing...")
+                        self.bearer_token = None  # Force token refresh
+                        bearer_token = self.get_bearer_token()
+                        request_headers["Authorization"] = f"Bearer {bearer_token}"
+                        continue
+                    raise APIError("Authentication failed. Invalid credentials.")
                 elif response.status_code == 403:
                     raise APIError("Insufficient permissions for this request.")
                 elif response.status_code == 429:
                     if attempt < 2:
-                        time.sleep(2)
+                        time.sleep(2 ** attempt)  # Exponential backoff
                         continue
                     raise APIError("Rate limit exceeded. Please wait before retrying.")
                 else:
@@ -89,44 +130,28 @@ class TABApiClient:
             except requests.exceptions.RequestException as e:
                 if attempt == 2:
                     raise APIError(f"Request failed: {str(e)}")
-                time.sleep(2)
+                time.sleep(2 ** attempt)
                 continue
                 
         raise APIError("Request failed after all retries")
 
-    # Racing endpoints
-    def get_meetings(self, date: str) -> Dict:
-        """Get race meetings for a specific date"""
-        formatted_date = format_date(date)
-        if not formatted_date:
-            raise ValueError("Invalid date format")
-        return self._make_request("GET", f"/racing/meetings", params={"date": formatted_date})
-
-    def get_races(self, meeting_id: str) -> Dict:
-        """Get races for a specific meeting"""
-        return self._make_request("GET", f"/racing/races", params={"meetingId": meeting_id})
-
-    def get_form(self, race_id: str) -> Dict:
-        """Get form guide for a specific race"""
-        return self._make_request("GET", f"/racing/form", params={"raceId": race_id})
-
-    def get_odds(self, race_id: str) -> Dict:
-        """Get current odds for a specific race"""
-        return self._make_request("GET", f"/racing/odds", params={"raceId": race_id})
-
-    def get_results(self, race_id: str) -> Dict:
-        """Get results for a specific race"""
-        return self._make_request("GET", f"/racing/results", params={"raceId": race_id})
-
     # Account endpoints
+    def verify_credentials(self) -> bool:
+        """Verify API credentials by attempting to get account info"""
+        try:
+            response = self._make_request("GET", "/v1/account/info")
+            return bool(response and not response.get('error'))
+        except APIError:
+            return False
+
     def get_account_balance(self) -> Dict:
         """Get current account balance"""
-        return self._make_request("GET", "/account/balance")
+        return self._make_request("GET", "/v1/account/balance")
 
     def get_account_bets(self, status: Optional[str] = None) -> Dict:
         """Get account bets with optional status filter"""
         params = {"status": status} if status else None
-        return self._make_request("GET", "/account/bets", params=params)
+        return self._make_request("GET", "/v1/account/bets", params=params)
 
     def get_bet_history(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict:
         """Get betting history within date range"""
@@ -135,16 +160,16 @@ class TABApiClient:
             params["startDate"] = format_date(start_date)
         if end_date:
             params["endDate"] = format_date(end_date)
-        return self._make_request("GET", "/account/bets/history", params=params)
+        return self._make_request("GET", "/v1/account/bets/history", params=params)
 
     def get_pending_bets(self) -> Dict:
         """Get pending bets"""
-        return self._make_request("GET", "/account/bets/pending")
+        return self._make_request("GET", "/v1/account/bets/pending")
 
     def place_bet(self, bet_data: Dict) -> Dict:
         """Place a new bet"""
-        return self._make_request("POST", "/account/bets", data=bet_data)
+        return self._make_request("POST", "/v1/account/bets", data=bet_data)
 
     def cancel_bet(self, bet_id: str) -> Dict:
         """Cancel a pending bet"""
-        return self._make_request("DELETE", f"/account/bets/{bet_id}")
+        return self._make_request("DELETE", f"/v1/account/bets/{bet_id}")
