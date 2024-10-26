@@ -41,24 +41,32 @@ st.set_page_config(
 
 def initialize_session_state():
     """Initialize and validate session state variables"""
-    session_vars = {
-        'client': None,
-        'selected_race': None,
-        'active_tab': "Racing",
-        'betslip': [],
-        'logged_in': False,
-        'webgl_context_lost': False,
-        'connection_error': False,
-        'last_refresh': None,
-        'error_count': 0,
-        'notifications': [],
-        'dark_mode': False,
-        'preferences': {}
-    }
-    
-    # Initialize missing variables
-    for var, default in session_vars.items():
-        if var not in st.session_state:
+    if 'initialized' not in st.session_state:
+        session_vars = {
+            'initialized': True,
+            'client': None,
+            'selected_race': None,
+            'active_tab': "Racing",
+            'betslip': [],
+            'logged_in': False,
+            'webgl_context_lost': False,
+            'connection_error': False,
+            'last_refresh': None,
+            'error_count': 0,
+            'notifications': [],
+            'dark_mode': False,
+            'preferences': {},
+            'tab_client': None,
+            'account': None,
+            'account_token': None,
+            'login_error': None,
+            'auth_attempts': 0,
+            'last_balance_check': None,
+            'loading_state': False
+        }
+        
+        # Initialize all variables at once
+        for var, default in session_vars.items():
             st.session_state[var] = default
             
     # Validate existing variables
@@ -190,7 +198,10 @@ def render_next_to_jump():
 
 def main():
     try:
-        # Initialize account manager first
+        # Initialize session state first
+        initialize_session_state()
+        
+        # Initialize account manager
         account_manager = AccountManager()
         
         # Show login form and require login before proceeding
@@ -201,7 +212,8 @@ def main():
     
     # Only proceed with API initialization and content if logged in
     if st.session_state.logged_in:
-        initialize_client()
+        if st.session_state.client is None:
+            initialize_client()
         
         # Main content
         st.title("🏇 Racing Analysis Platform")
