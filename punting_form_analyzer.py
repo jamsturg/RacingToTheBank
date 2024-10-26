@@ -143,8 +143,10 @@ class PuntingFormAPI:
     def verify_credentials(self) -> bool:
         """Verify API credentials are valid"""
         try:
+            # Make a simple API call to test credentials
             response = self.session.get(
-                f"{self.base_url}/status",
+                f"{self.base_url}/v1/races/next",
+                params={"jurisdiction": "ALL", "limit": 1},
                 timeout=10
             )
             return response.status_code == 200
