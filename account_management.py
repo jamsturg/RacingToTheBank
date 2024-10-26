@@ -224,6 +224,22 @@ class AccountManager(LoggerMixin):
                 if st.session_state.login_error:
                     st.error(st.session_state.login_error)
                     st.session_state.login_error = None
+
+                # Add guest login button
+                if st.button("Continue as Guest"):
+                    st.session_state.logged_in = True
+                    st.session_state.account = {
+                        'user_id': 'guest',
+                        'account_number': 'GUEST',
+                        'balance': 0.0,
+                        'pending_bets': [],
+                        'bet_history': [],
+                        'preferences': {}
+                    }
+                    st.rerun()
+                
+                st.markdown("---")
+                st.markdown("Or login with your TAB account:")
                 
                 with st.form("login_form", clear_on_submit=True):
                     account_number = st.text_input(
@@ -291,6 +307,10 @@ class AccountManager(LoggerMixin):
             return
             
         st.sidebar.subheader("Account")
+        
+        # Show guest mode notice if applicable
+        if st.session_state.account.get('user_id') == 'guest':
+            st.sidebar.warning("Guest Mode - Limited functionality")
         
         try:
             # Check if we need to refresh account data (every 5 minutes)
