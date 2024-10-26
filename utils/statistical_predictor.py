@@ -1,24 +1,56 @@
+from __future__ import annotations
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from statsmodels.tsa.seasonal import seasonal_decompose
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any, Union
 import logging
+from dataclasses import dataclass
 import xgboost as xgb
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.exceptions import NotFittedError
+
+@dataclass
+class ModelMetrics:
+    """Stores model performance metrics"""
+    mse: float
+    r2: float
+    cv_score: float
+    feature_importance: Dict[str, float]
 
 class StatisticalPredictor:
-    def __init__(self):
+    """Advanced statistical predictor for race outcomes"""
+    
+    def __init__(self, random_state: int = 42):
         self.feature_names = [
             'weight', 'barrier', 'rating', 'win_rate', 'place_rate',
-            'momentum', 'consistency', 'best_distance', 'distance_win_rate'
+            'momentum', 'consistency', 'best_distance', 'distance_win_rate',
+            'track_condition_score', 'jockey_rating', 'trainer_rating',
+            'days_since_last_run', 'weight_carried_last_start'
         ]
-        self.rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
-        self.gb_model = GradientBoostingRegressor(n_estimators=100, random_state=42)
-        self.xgb_model = xgb.XGBRegressor(n_estimators=100, random_state=42)
+        self.rf_model = RandomForestRegressor(
+            n_estimators=200, 
+            max_depth=10,
+            min_samples_split=5,
+            random_state=random_state
+        )
+        self.gb_model = GradientBoostingRegressor(
+            n_estimators=200,
+            learning_rate=0.1,
+            max_depth=6,
+            random_state=random_state
+        )
+        self.xgb_model = xgb.XGBRegressor(
+            n_estimators=200,
+            learning_rate=0.1,
+            max_depth=6,
+            random_state=random_state
+        )
         self.scaler = StandardScaler()
-        self.model_weights = {'rf': 1/3, 'gb': 1/3, 'xgb': 1/3}  # Default equal weights
+        self.model_weights = self._initialize_model_weights()
+        self.model_metrics: Dict[str, ModelMetrics] = {}
         self.setup_logging()
         self._initialize_models()
 
