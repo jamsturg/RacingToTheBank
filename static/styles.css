@@ -1,12 +1,13 @@
 /* Theme Variables */
 :root {
-    --primary-color: #0A2647;
-    --secondary-color: #144272;
-    --accent-color: #205295;
-    --background-color: #2C74B3;
-    --card-background: #FFFFFF;
-    --text-color: #FFFFFF;
-    --border-color: #205295;
+    --primary-color: #0A2647;      /* Dark Blue */
+    --secondary-color: #8EACCD;    /* Light Blue Grey */
+    --accent-color: #4F709C;       /* Medium Blue */
+    --background-color: #213555;   /* Navy Blue */
+    --card-background: #FFFFFF;    /* White */
+    --text-color: #D8D9DA;        /* Light Grey */
+    --text-dark: #213555;         /* Navy Blue for text on light bg */
+    --border-color: #4F709C;      /* Medium Blue */
     --success-color: #4CAF50;
     --warning-color: #FFC107;
     --danger-color: #F44336;
