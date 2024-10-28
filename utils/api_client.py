@@ -141,3 +141,125 @@ class RacingAPIClient:
         except Exception as e:
             self.logger.error(f"Health check failed: {str(e)}")
             return False
+
+class TABApiClient(RacingAPIClient):
+    """Enhanced API client with TAB-specific functionality"""
+    
+    def __init__(self):
+        super().__init__()
+        self.tab_base_url = 'https://api.tab.com.au/v1'
+        self.setup_tab_session()
+
+    def setup_tab_session(self):
+        """Configure TAB-specific session settings"""
+        self.tab_session = requests.Session()
+        
+        # Configure retry strategy
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=0.5,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET", "POST"]
+        )
+        
+        # Mount the adapter to the session
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.tab_session.mount("http://", adapter)
+        self.tab_session.mount("https://", adapter)
+        
+        # Set TAB-specific headers
+        self.tab_session.headers.update({
+            'User-Agent': 'TABRacingAnalysis/1.0',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        })
+
+    def get_odds(self, meeting_id: str, race_number: int) -> Optional[Dict]:
+        """Get current odds for a race"""
+        try:
+            url = f"{self.tab_base_url}/racing/{meeting_id}/races/{race_number}/odds"
+            response = self.tab_session.get(url, timeout=(5, 30))
+            response.raise_for_status()
+            
+            data = response.json()
+            if not data:
+                raise ValueError("Empty response received")
+                
+            self.logger.info(f"Successfully fetched odds for meeting {meeting_id}, race {race_number}")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching odds: {str(e)}")
+            return None
+
+    def get_fluctuations(self, meeting_id: str, race_number: int) -> Optional[Dict]:
+        """Get price fluctuations for a race"""
+        try:
+            url = f"{self.tab_base_url}/racing/{meeting_id}/races/{race_number}/fluctuations"
+            response = self.tab_session.get(url, timeout=(5, 30))
+            response.raise_for_status()
+            
+            data = response.json()
+            if not data:
+                raise ValueError("Empty response received")
+                
+            self.logger.info(f"Successfully fetched fluctuations for meeting {meeting_id}, race {race_number}")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching fluctuations: {str(e)}")
+            return None
+
+    def get_results(self, meeting_id: str, race_number: int) -> Optional[Dict]:
+        """Get race results"""
+        try:
+            url = f"{self.tab_base_url}/racing/{meeting_id}/races/{race_number}/results"
+            response = self.tab_session.get(url, timeout=(5, 30))
+            response.raise_for_status()
+            
+            data = response.json()
+            if not data:
+                raise ValueError("Empty response received")
+                
+            self.logger.info(f"Successfully fetched results for meeting {meeting_id}, race {race_number}")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching results: {str(e)}")
+            return None
+
+    def get_speed_maps(self, meeting_id: str, race_number: int) -> Optional[Dict]:
+        """Get speed maps for a race"""
+        try:
+            url = f"{self.tab_base_url}/racing/{meeting_id}/races/{race_number}/speedmaps"
+            response = self.tab_session.get(url, timeout=(5, 30))
+            response.raise_for_status()
+            
+            data = response.json()
+            if not data:
+                raise ValueError("Empty response received")
+                
+            self.logger.info(f"Successfully fetched speed maps for meeting {meeting_id}, race {race_number}")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching speed maps: {str(e)}")
+            return None
+
+    def get_track_conditions(self, meeting_id: str) -> Optional[Dict]:
+        """Get track conditions for a meeting"""
+        try:
+            url = f"{self.tab_base_url}/racing/{meeting_id}/conditions"
+            response = self.tab_session.get(url, timeout=(5, 30))
+            response.raise_for_status()
+            
+            data = response.json()
+            if not data:
+                raise ValueError("Empty response received")
+                
+            self.logger.info(f"Successfully fetched track conditions for meeting {meeting_id}")
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching track conditions: {str(e)}")
+            return None
