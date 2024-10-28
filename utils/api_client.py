@@ -1,27 +1,27 @@
 import requests
 from config import Config
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Union, Any, Callable
 import logging
 from datetime import datetime, timedelta
 import time
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 import json
-from functools import lru_cache
+from functools import lru_cache, wraps
 import asyncio
 import aiohttp
-from ratelimit import limits, sleep_and_retry
-from .logger import get_logger
+import utils.logger as logger
 
-class APIRateLimiter:
-    """Rate limiter for API calls"""
+class RateLimiter:
+    """Custom rate limiter implementation"""
     
     def __init__(self, calls: int, period: int):
         self.calls = calls
         self.period = period
         self.timestamps = []
 
-    def __call__(self, func):
+    def __call__(self, func: Callable) -> Callable:
+        @wraps(func)
         async def wrapper(*args, **kwargs):
             now = time.time()
             self.timestamps = [ts for ts in self.timestamps if ts > now - self.period]
@@ -62,7 +62,7 @@ class RacingAPIClient:
     def __init__(self):
         self.api_key = Config.PUNTING_FORM_API_KEY
         self.base_url = 'https://api.puntingform.com.au/v2/form'
-        self.logger = get_logger(__name__)
+        self.logger = logger.get_logger(__name__)
         self.cache = APICache()
         self.setup_session()
 
@@ -151,7 +151,7 @@ class RacingAPIClient:
             self.logger.error(f"Unexpected error: {str(e)}")
             raise
 
-    @APIRateLimiter(calls=100, period=60)  # 100 calls per minute
+    @RateLimiter(calls=100, period=60)  # 100 calls per minute
     async def get_meetings(
         self,
         date: Optional[str] = None,
@@ -184,7 +184,7 @@ class RacingAPIClient:
             self.logger.error(f"Error fetching meetings: {str(e)}")
             raise
 
-    @APIRateLimiter(calls=100, period=60)
+    @RateLimiter(calls=100, period=60)
     async def get_race_data(
         self,
         meeting_id: str,
@@ -274,7 +274,7 @@ class TABApiClient(RacingAPIClient):
             'Content-Type': 'application/json'
         })
 
-    @APIRateLimiter(calls=100, period=60)
+    @RateLimiter(calls=100, period=60)
     async def get_odds(
         self,
         meeting_id: str,
@@ -297,7 +297,7 @@ class TABApiClient(RacingAPIClient):
             self.logger.error(f"Error fetching odds: {str(e)}")
             return None
 
-    @APIRateLimiter(calls=100, period=60)
+    @RateLimiter(calls=100, period=60)
     async def get_fluctuations(
         self,
         meeting_id: str,
@@ -322,7 +322,7 @@ class TABApiClient(RacingAPIClient):
             self.logger.error(f"Error fetching fluctuations: {str(e)}")
             return None
 
-    @APIRateLimiter(calls=100, period=60)
+    @RateLimiter(calls=100, period=60)
     async def get_results(
         self,
         meeting_id: str,
@@ -345,7 +345,7 @@ class TABApiClient(RacingAPIClient):
             self.logger.error(f"Error fetching results: {str(e)}")
             return None
 
-    @APIRateLimiter(calls=100, period=60)
+    @RateLimiter(calls=100, period=60)
     async def get_speed_maps(
         self,
         meeting_id: str,
@@ -368,7 +368,7 @@ class TABApiClient(RacingAPIClient):
             self.logger.error(f"Error fetching speed maps: {str(e)}")
             return None
 
-    @APIRateLimiter(calls=100, period=60)
+    @RateLimiter(calls=100, period=60)
     async def get_track_conditions(
         self,
         meeting_id: str,
@@ -390,7 +390,7 @@ class TABApiClient(RacingAPIClient):
             self.logger.error(f"Error fetching track conditions: {str(e)}")
             return None
 
-    @APIRateLimiter(calls=100, period=60)
+    @RateLimiter(calls=100, period=60)
     async def get_runner_history(
         self,
         runner_id: str,
@@ -412,7 +412,7 @@ class TABApiClient(RacingAPIClient):
             self.logger.error(f"Error fetching runner history: {str(e)}")
             return None
 
-    @APIRateLimiter(calls=100, period=60)
+    @RateLimiter(calls=100, period=60)
     async def get_jockey_statistics(
         self,
         jockey_id: str,

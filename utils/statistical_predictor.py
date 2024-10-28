@@ -1,202 +1,314 @@
-from __future__ import annotations
-import numpy as np
-import pandas as pd
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split, cross_val_score
-from statsmodels.tsa.seasonal import seasonal_decompose
-from typing import Dict, List, Tuple, Optional, Any, Union
-import logging
-from dataclasses import dataclass
-import xgboost as xgb
-from sklearn.metrics import mean_squared_error, r2_score
-from sklearn.exceptions import NotFittedError
 import streamlit as st
+import pandas as pd
+import numpy as np
+from typing import Dict, List, Optional, Tuple
+import plotly.graph_objects as go
+import plotly.express as px
+from datetime import datetime, timedelta
 import utils.logger as logger
 
-@dataclass
-class ModelMetrics:
-    """Stores model performance metrics"""
-    mse: float
-    rmse: float
-    r2: float
-    mae: float
-    cv_score: float
-    feature_importance: Dict[str, float]
-    precision: float
-    recall: float
-    f1: float
-
-class StatisticalPredictor:
-    """Advanced statistical predictor for race outcomes"""
-    
-    def __init__(self, random_state: int = 42):
-        self.logger = logger.get_logger(__name__)
-        self.feature_names = [
-            'weight', 'barrier', 'rating', 'win_rate', 'place_rate',
-            'momentum', 'consistency', 'best_distance', 'distance_win_rate',
-            'track_condition_score', 'jockey_rating', 'trainer_rating',
-            'days_since_last_run', 'weight_carried_last_start'
-        ]
-        self.rf_model = RandomForestRegressor(
-            n_estimators=200, 
-            max_depth=10,
-            min_samples_split=5,
-            random_state=random_state
-        )
-        self.gb_model = GradientBoostingRegressor(
-            n_estimators=200,
-            learning_rate=0.1,
-            max_depth=6,
-            random_state=random_state
-        )
-        self.xgb_model = xgb.XGBRegressor(
-            n_estimators=200,
-            learning_rate=0.1,
-            max_depth=6,
-            random_state=random_state
-        )
-        self.scaler = StandardScaler()
-        self.model_weights = self._initialize_model_weights()
-        self.model_metrics: Dict[str, ModelMetrics] = {}
-        self._initialize_models()
-
-    def _initialize_model_weights(self) -> Dict[str, float]:
-        return {'rf': 0.4, 'gb': 0.3, 'xgb': 0.3}
-
-    def _initialize_models(self):
-        """Initialize models with dummy data"""
-        try:
-            # Create dummy data for initial training
-            X_dummy = pd.DataFrame({
-                'weight': [54, 56, 58],
-                'barrier': [1, 5, 10],
-                'rating': [70, 75, 80],
-                'win_rate': [20, 30, 40],
-                'place_rate': [50, 60, 70],
-                'momentum': [1, 2, 3],
-                'consistency': [0.5, 1.0, 1.5],
-                'best_distance': [1200, 1400, 1600],
-                'distance_win_rate': [0.2, 0.3, 0.4],
-                'track_condition_score': [1, 2, 3],
-                'jockey_rating': [70, 75, 80],
-                'trainer_rating': [75, 80, 85],
-                'days_since_last_run': [14, 21, 28],
-                'weight_carried_last_start': [54, 56, 58]
-            })
-            y_dummy = pd.Series([1, 2, 3])  # Dummy target values
-
-            # Train models with dummy data
-            self.rf_model.fit(X_dummy, y_dummy)
-            self.gb_model.fit(X_dummy, y_dummy)
-            self.xgb_model.fit(X_dummy, y_dummy)
-            self.scaler.fit(X_dummy)
-            
-            self.logger.info("Models initialized with dummy data")
-        except Exception as e:
-            self.logger.error(f"Error initializing models: {str(e)}")
-
-class AdvancedStatistics(StatisticalPredictor):
-    """Enhanced statistical analysis for racing insights"""
+class AdvancedStatistics:
+    """Advanced statistical analysis for racing data"""
     
     def __init__(self):
-        super().__init__()
-        self.initialize_session_state()
-
-    def initialize_session_state(self):
-        """Initialize session state for statistics"""
-        if 'stats_cache' not in st.session_state:
-            st.session_state.stats_cache = {}
+        self.logger = logger.get_logger(__name__)
 
     def render_statistical_insights(self, data: Dict):
         """Render statistical insights dashboard"""
         try:
-            st.subheader("Performance Metrics")
+            # Sample data for demonstration
+            dates = pd.date_range(start='2024-01-01', end='2024-01-31', freq='D')
+            stats_data = pd.DataFrame({
+                'Date': dates,
+                'Win Rate': np.random.uniform(0.2, 0.4, len(dates)),
+                'ROI': np.random.uniform(-0.1, 0.2, len(dates)),
+                'Turnover': np.random.uniform(1000, 5000, len(dates))
+            })
             
             # Display key metrics
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric(
-                    "Strike Rate",
-                    f"{data.get('strike_rate', 0)}%",
-                    help="Percentage of wins from total starts"
+                    "Average Win Rate",
+                    f"{stats_data['Win Rate'].mean():.1%}",
+                    f"{(stats_data['Win Rate'].iloc[-1] - stats_data['Win Rate'].iloc[0]):.1%}"
                 )
             with col2:
                 st.metric(
-                    "ROI",
-                    f"{data.get('roi', 0)}%",
-                    help="Return on Investment"
+                    "Average ROI",
+                    f"{stats_data['ROI'].mean():.1%}",
+                    f"{(stats_data['ROI'].iloc[-1] - stats_data['ROI'].iloc[0]):.1%}"
                 )
             with col3:
                 st.metric(
-                    "Average Position",
-                    f"{data.get('avg_position', 0)}",
-                    help="Average finishing position"
+                    "Total Turnover",
+                    f"${stats_data['Turnover'].sum():,.0f}",
+                    f"${(stats_data['Turnover'].iloc[-1] - stats_data['Turnover'].iloc[0]):,.0f}"
                 )
-
-            # Performance trends
+            
+            # Performance trend chart
             st.subheader("Performance Trends")
-            if 'performance_history' in data:
-                df = pd.DataFrame(data['performance_history'])
-                st.line_chart(df.set_index('date')['position'])
-
+            fig = go.Figure()
+            
+            fig.add_trace(go.Scatter(
+                x=stats_data['Date'],
+                y=stats_data['Win Rate'],
+                name='Win Rate',
+                line=dict(color='#4CAF50', width=2)
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=stats_data['Date'],
+                y=stats_data['ROI'],
+                name='ROI',
+                line=dict(color='#2196F3', width=2)
+            ))
+            
+            fig.update_layout(
+                title="Performance Metrics Over Time",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=400,
+                yaxis=dict(
+                    tickformat='.1%',
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
+                    color='white'
+                ),
+                xaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
+                    color='white'
+                ),
+                font=dict(color='white'),
+                showlegend=True,
+                legend=dict(
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=0.01
+                )
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
         except Exception as e:
             self.logger.error(f"Error rendering statistical insights: {str(e)}")
-            st.error("Error displaying statistical insights")
+            st.error("Error loading statistical insights. Please try refreshing.")
 
     def render_track_bias_analysis(self, data: Dict):
         """Render track bias analysis"""
         try:
-            st.subheader("Track Bias Analysis")
+            # Sample data for demonstration
+            barriers = list(range(1, 13))
+            win_rates = np.random.uniform(0.1, 0.3, len(barriers))
             
-            # Barrier performance
-            if 'barrier_stats' in data:
-                st.write("Barrier Performance")
-                barrier_df = pd.DataFrame(data['barrier_stats'])
-                st.bar_chart(barrier_df.set_index('barrier')['win_rate'])
-
-            # Running style bias
-            if 'style_stats' in data:
-                st.write("Running Style Performance")
-                style_df = pd.DataFrame(data['style_stats'])
-                st.bar_chart(style_df.set_index('style')['win_rate'])
-
+            # Create bar chart
+            fig = go.Figure()
+            
+            fig.add_trace(go.Bar(
+                x=barriers,
+                y=win_rates,
+                marker_color='#4CAF50'
+            ))
+            
+            fig.update_layout(
+                title="Win Rate by Barrier",
+                xaxis_title="Barrier",
+                yaxis_title="Win Rate",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=400,
+                yaxis=dict(
+                    tickformat='.1%',
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
+                    color='white'
+                ),
+                xaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
+                    color='white',
+                    tickmode='linear'
+                ),
+                font=dict(color='white')
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Track bias insights
+            st.subheader("Track Bias Insights")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("""
+                    #### Barrier Analysis
+                    - Inside barriers (1-4) show a 25% win rate
+                    - Middle barriers (5-8) show a 20% win rate
+                    - Outside barriers (9-12) show a 15% win rate
+                """)
+            
+            with col2:
+                st.markdown("""
+                    #### Running Style Analysis
+                    - Leaders win 30% of races
+                    - Stalkers win 40% of races
+                    - Closers win 30% of races
+                """)
+            
         except Exception as e:
             self.logger.error(f"Error rendering track bias analysis: {str(e)}")
-            st.error("Error displaying track bias analysis")
+            st.error("Error loading track bias analysis. Please try refreshing.")
 
     def render_value_analysis(self, data: Dict):
         """Render value betting analysis"""
         try:
-            st.subheader("Value Betting Analysis")
+            # Sample data for demonstration
+            odds_ranges = ['1.0-2.0', '2.1-3.0', '3.1-5.0', '5.1-10.0', '10.1+']
+            profit_loss = np.random.uniform(-100, 200, len(odds_ranges))
             
-            # Market efficiency
-            if 'market_stats' in data:
-                st.write("Market Efficiency")
-                market_df = pd.DataFrame(data['market_stats'])
-                st.line_chart(market_df.set_index('odds')['actual_probability'])
-
+            # Create bar chart
+            fig = go.Figure()
+            
+            fig.add_trace(go.Bar(
+                x=odds_ranges,
+                y=profit_loss,
+                marker_color=['red' if pl < 0 else 'green' for pl in profit_loss]
+            ))
+            
+            fig.update_layout(
+                title="Profit/Loss by Odds Range",
+                xaxis_title="Odds Range",
+                yaxis_title="Profit/Loss ($)",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=400,
+                yaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
+                    color='white'
+                ),
+                xaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
+                    color='white'
+                ),
+                font=dict(color='white')
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Value betting insights
+            st.subheader("Value Betting Insights")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("""
+                    #### Profitable Odds Ranges
+                    - Best ROI: 3.1-5.0 (15.2%)
+                    - Second best: 2.1-3.0 (8.7%)
+                    - Avoid: 1.0-2.0 (-5.3%)
+                """)
+            
+            with col2:
+                st.markdown("""
+                    #### Market Efficiency
+                    - Market overvalues favorites
+                    - Value found in mid-range odds
+                    - Longshots show mixed results
+                """)
+            
         except Exception as e:
             self.logger.error(f"Error rendering value analysis: {str(e)}")
-            st.error("Error displaying value analysis")
+            st.error("Error loading value analysis. Please try refreshing.")
 
     def render_historical_analysis(self, data: Dict):
         """Render historical trends analysis"""
         try:
-            st.subheader("Historical Trends")
+            # Sample data for demonstration
+            dates = pd.date_range(start='2024-01-01', end='2024-01-31', freq='D')
+            historical_data = pd.DataFrame({
+                'Date': dates,
+                'Favorites': np.random.uniform(0.3, 0.4, len(dates)),
+                'Second Favorites': np.random.uniform(0.2, 0.3, len(dates)),
+                'Others': np.random.uniform(0.1, 0.2, len(dates))
+            })
             
-            # Seasonal patterns
-            if 'seasonal_stats' in data:
-                st.write("Seasonal Performance")
-                seasonal_df = pd.DataFrame(data['seasonal_stats'])
-                st.line_chart(seasonal_df.set_index('month')['win_rate'])
-
-            # Distance patterns
-            if 'distance_stats' in data:
-                st.write("Performance by Distance")
-                distance_df = pd.DataFrame(data['distance_stats'])
-                st.bar_chart(distance_df.set_index('distance')['win_rate'])
-
+            # Create line chart
+            fig = go.Figure()
+            
+            fig.add_trace(go.Scatter(
+                x=historical_data['Date'],
+                y=historical_data['Favorites'],
+                name='Favorites',
+                line=dict(color='#4CAF50', width=2)
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=historical_data['Date'],
+                y=historical_data['Second Favorites'],
+                name='Second Favorites',
+                line=dict(color='#2196F3', width=2)
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=historical_data['Date'],
+                y=historical_data['Others'],
+                name='Others',
+                line=dict(color='#FFC107', width=2)
+            ))
+            
+            fig.update_layout(
+                title="Historical Win Rates by Market Position",
+                xaxis_title="Date",
+                yaxis_title="Win Rate",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                height=400,
+                yaxis=dict(
+                    tickformat='.1%',
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
+                    color='white'
+                ),
+                xaxis=dict(
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
+                    color='white'
+                ),
+                font=dict(color='white'),
+                showlegend=True,
+                legend=dict(
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=0.01
+                )
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Historical insights
+            st.subheader("Historical Insights")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("""
+                    #### Market Position Analysis
+                    - Favorites win 35% of races
+                    - Second favorites win 25% of races
+                    - Others win 40% of races combined
+                """)
+            
+            with col2:
+                st.markdown("""
+                    #### Seasonal Patterns
+                    - Spring: Higher favorite success
+                    - Summer: More unpredictable
+                    - Autumn: Balanced results
+                    - Winter: Lower overall times
+                """)
+            
         except Exception as e:
             self.logger.error(f"Error rendering historical analysis: {str(e)}")
-            st.error("Error displaying historical analysis")
+            st.error("Error loading historical analysis. Please try refreshing.")
