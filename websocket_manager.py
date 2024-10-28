@@ -1,251 +1,131 @@
 import logging
 import asyncio
-import json
-from typing import Optional, Callable, Dict
-from datetime import datetime, timedelta
-import random
-import ssl
-from urllib.parse import urlparse, urljoin, urlunparse
-import backoff
-from collections import deque
 import websockets
-from websockets.exceptions import (
-    ConnectionClosed, 
-    InvalidStatusCode, 
-    InvalidMessage, 
-    WebSocketProtocolError,
-    ConnectionClosedOK,
-    ConnectionClosedError
-)
-
-logger = logging.getLogger(__name__)
-
-class WebSocketError(Exception):
-    """Custom WebSocket error"""
-    pass
+import json
+from typing import Dict, Optional, Callable
+from datetime import datetime
 
 class WebSocketManager:
-    def __init__(self, url: str, on_message: Callable, on_error: Callable):
-        """Initialize WebSocket manager with URL validation"""
-        self.on_message = on_message
-        self.on_error = on_error
-        self.websocket = None
-        self.is_connected = False
-        self.should_reconnect = True
-        self.retry_count = 0
-        self.max_retries = 10
-        self.base_delay = 1.0
-        self.max_delay = 60.0
-        self.connection_timeout = 30
-        self.last_heartbeat = None
-        self.heartbeat_interval = timedelta(seconds=15)
-        self.message_queue = asyncio.Queue()
-        self.connection_monitor_task = None
-        self.connection_lost_callbacks = []
-        self.error_history = deque(maxlen=5)
-        self.consecutive_errors = 0
-        self.last_error_time = None
-        self.connection_events = deque(maxlen=100)
-        
-        # Validate and set URL after other initializations
-        self.url = self._validate_and_normalize_url(url)
-        self.ssl_context = self._create_ssl_context() if self.use_ssl else None
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.ws = None
+        self.connected = False
+        self.callbacks = {}
+        self.last_message = None
 
-    def _validate_and_normalize_url(self, url: str) -> str:
-        """Validate and normalize WebSocket URL with enhanced error handling"""
+    async def connect(self, url: str):
+        """Connect to WebSocket server"""
         try:
-            # Parse URL
-            parsed = urlparse(url)
-            
-            # Validate scheme
-            if not parsed.scheme:
-                raise WebSocketError("Missing WebSocket scheme")
-            if parsed.scheme not in ('ws', 'wss'):
-                raise WebSocketError(f"Invalid WebSocket scheme: {parsed.scheme}")
-            
-            # Validate host
-            if not parsed.netloc:
-                raise WebSocketError("Missing WebSocket host")
-            
-            # Handle empty path - always ensure a path exists
-            path = parsed.path if parsed.path else '/'
-            
-            # Store connection info
-            self.use_ssl = parsed.scheme == 'wss'
-            self.host = parsed.netloc
-            self.port = parsed.port or (443 if self.use_ssl else 80)
-            self.path = path
-            
-            # Normalize URL components
-            normalized = urlunparse((
-                parsed.scheme,
-                parsed.netloc,
-                path,
-                parsed.params,
-                parsed.query,
-                parsed.fragment or ''
-            ))
-            
-            logger.info(f"WebSocket URL validated and normalized: {normalized}")
-            return normalized
-            
-        except WebSocketError as e:
-            logger.error(f"WebSocket URL validation error: {str(e)}")
-            raise
+            self.ws = await websockets.connect(url)
+            self.connected = True
+            self.logger.info("Connected to WebSocket server")
+            return True
         except Exception as e:
-            logger.error(f"Unexpected URL validation error: {str(e)}")
-            raise WebSocketError(f"Invalid WebSocket URL: {str(e)}")
+            self.logger.error(f"WebSocket connection error: {str(e)}")
+            return False
 
-    def _create_ssl_context(self) -> ssl.SSLContext:
-        """Create SSL context with enhanced security"""
+    async def disconnect(self):
+        """Disconnect from WebSocket server"""
+        if self.ws:
+            await self.ws.close()
+            self.connected = False
+            self.logger.info("Disconnected from WebSocket server")
+
+    async def send_message(self, message: Dict):
+        """Send message to WebSocket server"""
         try:
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = True
-            ssl_context.verify_mode = ssl.CERT_REQUIRED
-            ssl_context.options |= (
-                ssl.OP_NO_TLSv1 | 
-                ssl.OP_NO_TLSv1_1 | 
-                ssl.OP_NO_COMPRESSION |
-                ssl.OP_NO_RENEGOTIATION |
-                ssl.OP_CIPHER_SERVER_PREFERENCE
-            )
-            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
-            ssl_context.set_ciphers('ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256')
-            return ssl_context
+            if self.connected and self.ws:
+                await self.ws.send(json.dumps(message))
+                self.logger.debug(f"Sent message: {message}")
+                return True
+            return False
         except Exception as e:
-            logger.error(f"SSL context creation failed: {str(e)}")
-            raise RuntimeError(f"SSL context creation failed: {str(e)}")
+            self.logger.error(f"Error sending message: {str(e)}")
+            return False
 
-    @backoff.on_exception(
-        backoff.expo,
-        (ConnectionClosed, ConnectionClosedOK, ConnectionClosedError,
-         InvalidStatusCode, InvalidMessage, WebSocketProtocolError,
-         ConnectionError, asyncio.TimeoutError, WebSocketError),
-        max_tries=10,
-        max_time=300
-    )
-    async def connect(self):
-        """Connect to WebSocket with automatic reconnection"""
-        if not self.connection_monitor_task:
-            self.connection_monitor_task = asyncio.create_task(self._monitor_connection_health())
-
-        while self.should_reconnect and self.retry_count < self.max_retries:
-            try:
-                if self.websocket and not self.websocket.closed:
-                    await self.websocket.close()
-                
-                extra_options = {
-                    'ping_interval': None,
-                    'ping_timeout': None,
-                    'close_timeout': 10,
-                    'max_size': 10 * 1024 * 1024,
-                    'compression': None,
-                    'max_queue': 256,
-                    'read_limit': 65536,
-                    'write_limit': 65536,
-                    'open_timeout': 20,
-                    'extra_headers': {
-                        'Connection': 'Upgrade',
-                        'Upgrade': 'websocket',
-                        'Host': self.host,
-                        'Sec-WebSocket-Version': '13',
-                        'Sec-WebSocket-Key': self._generate_websocket_key()
-                    }
+    async def receive_message(self) -> Optional[Dict]:
+        """Receive message from WebSocket server"""
+        try:
+            if self.connected and self.ws:
+                message = await self.ws.recv()
+                self.last_message = {
+                    'data': json.loads(message),
+                    'timestamp': datetime.now()
                 }
-                
-                if self.use_ssl:
-                    extra_options['ssl'] = self.ssl_context
+                self.logger.debug(f"Received message: {message}")
+                return self.last_message['data']
+            return None
+        except Exception as e:
+            self.logger.error(f"Error receiving message: {str(e)}")
+            return None
 
-                self.websocket = await websockets.connect(
-                    self.url,
-                    **extra_options
-                )
-                
-                self.is_connected = True
-                self.retry_count = 0
-                logger.info("WebSocket connection established")
-                return True
-                
-            except Exception as e:
-                self.is_connected = False
-                self.retry_count += 1
-                logger.error(f"Connection attempt {self.retry_count} failed: {str(e)}")
-                
-                if self.retry_count < self.max_retries:
-                    delay = min(
-                        self.base_delay * (2 ** self.retry_count) + random.uniform(0, 1),
-                        self.max_delay
-                    )
-                    await asyncio.sleep(delay)
-                else:
-                    logger.error("Max retry attempts reached")
-                    return False
+    def register_callback(self, event_type: str, callback: Callable):
+        """Register callback for event type"""
+        self.callbacks[event_type] = callback
+        self.logger.debug(f"Registered callback for {event_type}")
 
-    async def _monitor_connection_health(self):
-        """Monitor connection health and handle reconnection"""
-        while self.should_reconnect:
-            try:
-                if not self.is_connected or (self.websocket and self.websocket.closed):
-                    logger.warning("Connection lost, initiating reconnection")
-                    await self.connect()
-                await asyncio.sleep(5)
-            except Exception as e:
-                logger.error(f"Health monitoring error: {str(e)}")
-                await asyncio.sleep(1)
+    def unregister_callback(self, event_type: str):
+        """Unregister callback for event type"""
+        if event_type in self.callbacks:
+            del self.callbacks[event_type]
+            self.logger.debug(f"Unregistered callback for {event_type}")
 
-    def _generate_websocket_key(self) -> str:
-        """Generate WebSocket key for handshake"""
-        import base64
-        import os
-        return base64.b64encode(os.urandom(16)).decode()
-
-    async def send(self, message: Dict) -> bool:
-        """Send message with retry logic"""
-        if not self.is_connected:
-            await self.connect()
-            
+    async def handle_message(self, message: Dict):
+        """Handle received message"""
         try:
-            if self.websocket and not self.websocket.closed:
-                await self.websocket.send(json.dumps(message))
+            event_type = message.get('type')
+            if event_type in self.callbacks:
+                await self.callbacks[event_type](message)
+            else:
+                self.logger.warning(f"No callback registered for {event_type}")
+        except Exception as e:
+            self.logger.error(f"Error handling message: {str(e)}")
+
+    async def start_listening(self):
+        """Start listening for messages"""
+        try:
+            while self.connected:
+                message = await self.receive_message()
+                if message:
+                    await self.handle_message(message)
+        except Exception as e:
+            self.logger.error(f"Error in message loop: {str(e)}")
+            await self.disconnect()
+
+    def get_last_message(self) -> Optional[Dict]:
+        """Get last received message"""
+        return self.last_message
+
+    def is_connected(self) -> bool:
+        """Check if connected to WebSocket server"""
+        return self.connected
+
+    async def reconnect(self, url: str, max_attempts: int = 3):
+        """Attempt to reconnect to WebSocket server"""
+        attempts = 0
+        while attempts < max_attempts and not self.connected:
+            self.logger.info(f"Reconnection attempt {attempts + 1}/{max_attempts}")
+            if await self.connect(url):
+                return True
+            attempts += 1
+            await asyncio.sleep(2 ** attempts)  # Exponential backoff
+        return False
+
+    async def ping(self) -> bool:
+        """Send ping to check connection"""
+        try:
+            if self.connected and self.ws:
+                await self.ws.ping()
                 return True
             return False
         except Exception as e:
-            logger.error(f"Send error: {str(e)}")
-            self.is_connected = False
+            self.logger.error(f"Ping error: {str(e)}")
             return False
 
-    async def receive(self):
-        """Receive messages with error handling"""
-        while self.is_connected:
-            try:
-                if self.websocket and not self.websocket.closed:
-                    message = await self.websocket.recv()
-                    await self.on_message(json.loads(message))
-            except Exception as e:
-                logger.error(f"Receive error: {str(e)}")
-                self.is_connected = False
-                await self.connect()
-            await asyncio.sleep(0.1)
-
-    async def close(self):
-        """Close connection with cleanup"""
-        self.should_reconnect = False
-        self.is_connected = False
-        
-        if self.connection_monitor_task:
-            self.connection_monitor_task.cancel()
-            try:
-                await self.connection_monitor_task
-            except asyncio.CancelledError:
-                pass
-        
-        if self.websocket:
-            try:
-                await asyncio.wait_for(
-                    self.websocket.close(),
-                    timeout=5
-                )
-            except Exception as e:
-                logger.error(f"Close error: {str(e)}")
-            finally:
-                self.websocket = None
+    def get_connection_status(self) -> Dict:
+        """Get detailed connection status"""
+        return {
+            'connected': self.connected,
+            'last_message_time': self.last_message['timestamp'] if self.last_message else None,
+            'registered_callbacks': list(self.callbacks.keys())
+        }
