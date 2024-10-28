@@ -1,185 +1,204 @@
-import streamlit as st
+import logging
+from typing import Dict, List
+from datetime import datetime
 import pandas as pd
-from typing import Dict, Optional
-from racing_visualizations import RacingVisualizations
-import plotly.graph_objects as go
 
 class RaceInformation:
-    def __init__(self, client):
-        self.client = client
-        self.visualizer = RacingVisualizations()
-        
-    def render_race_overview(self, race_data: Dict):
-        """Render comprehensive race overview"""
-        st.header(f"Race {race_data['raceNumber']} - {race_data.get('raceName', '')}")
-        
-        # Race details
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Distance", f"{race_data.get('raceDistance', 0)}m")
-        with col2:
-            st.metric("Prize Money", f"${race_data.get('prizeMoney', 0):,.0f}")
-        with col3:
-            st.metric("Track Condition", race_data.get('trackCondition', 'N/A'))
+    def __init__(self, tab_client):
+        self.logger = logging.getLogger(__name__)
+        self.tab_client = tab_client
+
+    def get_race_details(self, race_id: str) -> Dict:
+        """Get detailed race information"""
+        try:
+            # Mock race details for development
+            return {
+                'raceId': race_id,
+                'raceName': 'Sample Race',
+                'trackName': 'Randwick',
+                'distance': 1200,
+                'raceTime': datetime.now().strftime('%H:%M'),
+                'trackCondition': 'Good',
+                'raceClass': 'Group 1',
+                'prizeMoney': 500000,
+                'runners': [
+                    {
+                        'number': 1,
+                        'name': 'Horse 1',
+                        'barrier': 4,
+                        'weight': 56.5,
+                        'jockey': 'J. Smith',
+                        'trainer': 'C. Waller',
+                        'form': '1-2-1',
+                        'odds': 2.40
+                    },
+                    {
+                        'number': 2,
+                        'name': 'Horse 2',
+                        'barrier': 7,
+                        'weight': 55.0,
+                        'jockey': 'T. Berry',
+                        'trainer': 'G. Waterhouse',
+                        'form': '2-1-3',
+                        'odds': 3.50
+                    }
+                ]
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting race details: {str(e)}")
+            return {}
+
+    def get_runner_details(self, runner_id: str) -> Dict:
+        """Get detailed runner information"""
+        try:
+            # Mock runner details for development
+            return {
+                'runnerId': runner_id,
+                'name': 'Sample Horse',
+                'age': 4,
+                'sex': 'Gelding',
+                'color': 'Bay',
+                'sire': 'Sire Name',
+                'dam': 'Dam Name',
+                'trainer': 'Trainer Name',
+                'owner': 'Owner Name',
+                'career': {
+                    'starts': 12,
+                    'wins': 4,
+                    'places': 3,
+                    'prizemoney': 450000
+                },
+                'lastFive': [
+                    {
+                        'date': '2024-01-01',
+                        'track': 'Randwick',
+                        'distance': 1200,
+                        'position': 1,
+                        'weight': 56.5,
+                        'jockey': 'J. Smith',
+                        'margin': 0.5
+                    }
+                ]
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting runner details: {str(e)}")
+            return {}
+
+    def get_track_conditions(self, track_id: str) -> Dict:
+        """Get track conditions"""
+        try:
+            # Mock track conditions for development
+            return {
+                'trackId': track_id,
+                'condition': 'Good 4',
+                'weather': 'Fine',
+                'temperature': 22,
+                'railPosition': 'True',
+                'penetrometer': 4.8,
+                'lastRain': '2024-01-01',
+                'forecast': {
+                    'rain': False,
+                    'temperature': 24,
+                    'wind': 'Light'
+                }
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting track conditions: {str(e)}")
+            return {}
+
+    def get_race_history(self, race_id: str) -> List[Dict]:
+        """Get historical race data"""
+        try:
+            # Mock race history for development
+            return [
+                {
+                    'date': '2023-01-01',
+                    'winner': 'Horse A',
+                    'time': '1:10.2',
+                    'margin': 0.5,
+                    'track': 'Good 4',
+                    'weight': 56.5
+                },
+                {
+                    'date': '2022-01-01',
+                    'winner': 'Horse B',
+                    'time': '1:09.8',
+                    'margin': 1.0,
+                    'track': 'Good 3',
+                    'weight': 57.0
+                }
+            ]
+        except Exception as e:
+            self.logger.error(f"Error getting race history: {str(e)}")
+            return []
+
+    def get_speed_map_data(self, race_id: str) -> Dict:
+        """Get speed map data"""
+        try:
+            # Mock speed map data for development
+            return {
+                'raceId': race_id,
+                'distance': 1200,
+                'runners': [
+                    {
+                        'number': 1,
+                        'name': 'Horse 1',
+                        'barrier': 4,
+                        'early_speed': 85,
+                        'mid_speed': 80,
+                        'late_speed': 75,
+                        'predicted_position': 2
+                    },
+                    {
+                        'number': 2,
+                        'name': 'Horse 2',
+                        'barrier': 7,
+                        'early_speed': 90,
+                        'mid_speed': 85,
+                        'late_speed': 80,
+                        'predicted_position': 1
+                    }
+                ]
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting speed map data: {str(e)}")
+            return {}
+
+    def get_sectional_times(self, race_id: str) -> List[Dict]:
+        """Get sectional times"""
+        try:
+            # Mock sectional times for development
+            return [
+                {
+                    'section': '200m',
+                    'time': '11.2',
+                    'leader': 'Horse 1',
+                    'positions': [1, 2, 3, 4]
+                },
+                {
+                    'section': '400m',
+                    'time': '22.8',
+                    'leader': 'Horse 2',
+                    'positions': [2, 1, 4, 3]
+                }
+            ]
+        except Exception as e:
+            self.logger.error(f"Error getting sectional times: {str(e)}")
+            return []
+
+    def render_race_stats(self, race_data: Dict):
+        """Render race statistics visualization"""
+        try:
+            # Create sample race statistics for visualization
+            stats_df = pd.DataFrame({
+                'Runner': ['Horse 1', 'Horse 2', 'Horse 3'],
+                'Win%': [33.3, 25.0, 40.0],
+                'Place%': [66.7, 50.0, 80.0],
+                'Avg Speed': [62.5, 61.8, 63.2]
+            })
             
-        # Tabs for different views
-        tabs = st.tabs([
-            "Form Guide",
-            "Speed Map",
-            "Track Bias",
-            "Betting Analysis"
-        ])
-        
-        with tabs[0]:
-            self._render_form_guide(race_data)
+            return stats_df
             
-        with tabs[1]:
-            self._render_speed_map(race_data)
-            
-        with tabs[2]:
-            self._render_track_bias(race_data)
-            
-        with tabs[3]:
-            self._render_betting_analysis(race_data)
-    
-    def _render_form_guide(self, race_data: Dict):
-        """Render detailed form guide"""
-        if not race_data.get('runners'):
-            st.warning("No runners available")
-            return
-            
-        for runner in race_data['runners']:
-            with st.expander(f"{runner['runnerNumber']}. {runner['runnerName']}"):
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    # Basic info
-                    st.write("**Basic Information**")
-                    info_df = pd.DataFrame({
-                        'Attribute': [
-                            'Barrier',
-                            'Weight',
-                            'Jockey',
-                            'Trainer',
-                            'Last Starts',
-                            'Career'
-                        ],
-                        'Value': [
-                            runner.get('barrier', 'N/A'),
-                            f"{runner.get('handicapWeight', 0)}kg",
-                            runner.get('jockey', 'N/A'),
-                            runner.get('trainer', 'N/A'),
-                            runner.get('last20Starts', 'N/A'),
-                            runner.get('careerRecord', 'N/A')
-                        ]
-                    })
-                    st.dataframe(info_df, hide_index=True)
-                    
-                    # Form comments
-                    if runner.get('formComments'):
-                        st.write("**Form Comments**")
-                        st.write(runner['formComments'])
-                
-                with col2:
-                    # Performance metrics
-                    if runner.get('statistics'):
-                        stats = runner['statistics']
-                        metrics = {
-                            'Win Rate': f"{stats.get('winRate', 0):.1f}%",
-                            'Place Rate': f"{stats.get('placeRate', 0):.1f}%",
-                            'ROI': f"{stats.get('roi', 0):.1f}%"
-                        }
-                        for label, value in metrics.items():
-                            st.metric(label, value)
-    
-    def _render_speed_map(self, race_data: Dict):
-        """Render speed map visualization"""
-        st.subheader("Predicted Running Positions")
-        
-        if not race_data.get('runners'):
-            st.warning("No runners available for speed map")
-            return
-            
-        fig = self.visualizer.create_speed_map(race_data['runners'])
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Position analysis
-        st.write("**Running Style Analysis**")
-        styles = {
-            'Leader': [],
-            'On-pace': [],
-            'Midfield': [],
-            'Back': []
-        }
-        
-        for runner in race_data['runners']:
-            style = self._analyze_running_style(runner)
-            styles[style].append(f"{runner['runnerNumber']}. {runner['runnerName']}")
-            
-        for style, runners in styles.items():
-            if runners:
-                st.write(f"**{style}:** {', '.join(runners)}")
-    
-    def _render_track_bias(self, race_data: Dict):
-        """Render track bias analysis"""
-        st.subheader("Track Bias Analysis")
-        
-        # Track configuration
-        if race_data.get('trackConfiguration'):
-            st.write("**Track Configuration**")
-            st.write(race_data['trackConfiguration'])
-        
-        # Create bias visualization
-        fig = self.visualizer.create_track_bias({})  # Add track data when available
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Rail position impact
-        if race_data.get('railPosition'):
-            st.write("**Rail Position Impact**")
-            st.write(f"Rail Position: {race_data['railPosition']}")
-            self._analyze_rail_impact(race_data['railPosition'])
-    
-    def _render_betting_analysis(self, race_data: Dict):
-        """Render betting analysis and suggestions"""
-        st.subheader("Betting Analysis")
-        
-        if not race_data.get('runners'):
-            st.warning("No runners available for analysis")
-            return
-            
-        # Market overview
-        market_df = pd.DataFrame([{
-            'Runner': f"{r['runnerNumber']}. {r['runnerName']}",
-            'Win Odds': r.get('fixedOdds', {}).get('returnWin', 'N/A'),
-            'Place Odds': r.get('fixedOdds', {}).get('returnPlace', 'N/A'),
-            'Win %': f"{100/float(r.get('fixedOdds', {}).get('returnWin', 100)):.1f}%"
-        } for r in race_data['runners'] if not r.get('scratched')])
-        
-        st.dataframe(market_df, hide_index=True)
-        
-        # Market confidence
-        total_percentage = sum(
-            100/float(r.get('fixedOdds', {}).get('returnWin', 100))
-            for r in race_data['runners']
-            if not r.get('scratched')
-        )
-        st.metric(
-            "Market Confidence",
-            f"{total_percentage:.1f}%",
-            delta=f"{total_percentage-100:.1f}%"
-        )
-    
-    def _analyze_running_style(self, runner: Dict) -> str:
-        """Analyze runner's typical running style"""
-        # This would use historical data in production
-        # For now, return random style for demonstration
-        import random
-        return random.choice(['Leader', 'On-pace', 'Midfield', 'Back'])
-    
-    def _analyze_rail_impact(self, rail_position: str):
-        """Analyze impact of rail position"""
-        # This would use historical analysis in production
-        st.write("Historical analysis shows:")
-        st.write("- Inside runners advantage: Medium")
-        st.write("- Early speed importance: High")
-        st.write("- Backmarker success rate: Low")
+        except Exception as e:
+            self.logger.error(f"Error rendering race stats: {str(e)}")
+            return pd.DataFrame()
