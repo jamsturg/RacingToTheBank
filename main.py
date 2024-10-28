@@ -31,190 +31,187 @@ class RacingDashboard:
             initial_sidebar_state="expanded"
         )
 
-        # Custom CSS with blue-grey-darkblue-white color palette
+        # Custom CSS with improved styling
         st.markdown("""
             <style>
-            :root {
-                --primary-blue: #1E3D59;
-                --secondary-blue: #2B4F76;
-                --light-blue: #E6EEF8;
-                --grey-blue: #7B8FA1;
-                --white: #FFFFFF;
-            }
-            
-            /* Global text color */
-            .stMarkdown, .stText, p, h1, h2, h3, label {
-                color: var(--white) !important;
+            /* Global styles */
+            .stApp {
+                background-color: #1E3D59;
+                color: white;
             }
             
             /* Main header */
             .main-header {
-                background-color: var(--primary-blue);
-                padding: 1.5rem;
-                border-radius: 5px;
-                color: var(--white) !important;
-                text-align: center;
+                background-color: #2B4F76;
+                padding: 2rem;
+                border-radius: 10px;
                 margin-bottom: 2rem;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                text-align: center;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
             
             .main-header h1 {
-                color: var(--white) !important;
+                color: white !important;
                 font-size: 2.5rem;
                 font-weight: bold;
+                margin: 0;
             }
             
             /* Sidebar */
-            section[data-testid="stSidebar"] {
-                background-color: var(--primary-blue);
-                border-right: 1px solid var(--grey-blue);
+            [data-testid="stSidebar"] {
+                background-color: #2B4F76;
+                border-right: 1px solid rgba(255,255,255,0.1);
             }
             
-            section[data-testid="stSidebar"] .stMarkdown {
-                color: var(--white) !important;
+            [data-testid="stSidebar"] [data-testid="stMarkdown"] {
+                color: white;
             }
             
-            section[data-testid="stSidebar"] h1 {
-                color: var(--white) !important;
-                font-size: 1.5rem;
-                padding: 1rem 0;
+            /* Navigation */
+            .stRadio > label {
+                color: white !important;
+                font-weight: 500;
             }
             
-            section[data-testid="stSidebar"] .stRadio label {
-                color: var(--white) !important;
-            }
-            
-            section[data-testid="stSidebar"] button {
-                background-color: var(--secondary-blue);
-                color: var(--white);
-                border: none;
-                border-radius: 5px;
-                padding: 0.5rem 1rem;
-                width: 100%;
-                margin: 0.5rem 0;
-            }
-            
-            section[data-testid="stSidebar"] button:hover {
-                background-color: var(--grey-blue);
-            }
-            
-            section[data-testid="stSidebar"] .stExpander {
-                border: 1px solid var(--grey-blue);
-                border-radius: 5px;
-                margin: 1rem 0;
+            .stRadio > div {
+                color: white !important;
             }
             
             /* Metric cards */
-            div[data-testid="stMetricValue"] {
-                background-color: var(--light-blue);
+            [data-testid="stMetricValue"] {
+                background-color: #2B4F76;
                 padding: 1rem;
-                border-radius: 5px;
-                color: var(--primary-blue) !important;
+                border-radius: 10px;
+                color: white !important;
                 font-weight: bold;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            [data-testid="stMetricDelta"] {
+                color: #4CAF50 !important;
             }
             
             /* Tables */
             .stDataFrame {
-                background-color: var(--white);
-                border: 1px solid var(--grey-blue);
-                border-radius: 5px;
+                background-color: #2B4F76 !important;
+            }
+            
+            .stDataFrame [data-testid="stTable"] {
+                color: white !important;
             }
             
             /* Buttons */
-            .stButton>button {
-                background-color: var(--secondary-blue);
-                color: var(--white);
-                border: none;
-                border-radius: 5px;
-                padding: 0.5rem 1rem;
-                transition: background-color 0.3s;
+            .stButton > button {
+                background-color: #4CAF50 !important;
+                color: white !important;
+                border: none !important;
+                padding: 0.5rem 1rem !important;
+                border-radius: 5px !important;
+                font-weight: 500 !important;
+                transition: all 0.3s ease !important;
             }
             
-            .stButton>button:hover {
-                background-color: var(--grey-blue);
+            .stButton > button:hover {
+                background-color: #45a049 !important;
+                transform: translateY(-1px);
             }
             
             /* Forms */
             .stForm {
-                background-color: var(--light-blue);
-                padding: 1.5rem;
-                border-radius: 5px;
+                background-color: #2B4F76;
+                padding: 2rem;
+                border-radius: 10px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            
+            /* Inputs */
+            .stTextInput > div > div > input,
+            .stNumberInput > div > div > input {
+                background-color: rgba(255,255,255,0.1) !important;
+                color: white !important;
+                border: 1px solid rgba(255,255,255,0.2) !important;
+            }
+            
+            /* Select boxes */
+            .stSelectbox > div > div {
+                background-color: rgba(255,255,255,0.1) !important;
+                color: white !important;
+                border: 1px solid rgba(255,255,255,0.2) !important;
             }
             
             /* Tabs */
             .stTabs [data-baseweb="tab-list"] {
-                gap: 2rem;
-                background-color: var(--light-blue);
-                padding: 0.5rem;
-                border-radius: 5px;
+                background-color: #2B4F76 !important;
+                padding: 0.5rem !important;
+                border-radius: 10px !important;
+                gap: 0.5rem !important;
             }
             
             .stTabs [data-baseweb="tab"] {
-                height: 4rem;
-                color: var(--primary-blue);
-                background-color: var(--white);
-                border-radius: 5px;
+                background-color: transparent !important;
+                color: white !important;
+                border: 1px solid rgba(255,255,255,0.2) !important;
+                border-radius: 5px !important;
+                padding: 0.5rem 1rem !important;
             }
             
             .stTabs [data-baseweb="tab"][aria-selected="true"] {
-                background-color: var(--secondary-blue);
-                color: var(--white);
+                background-color: #4CAF50 !important;
+                border-color: #4CAF50 !important;
             }
             
-            /* Footer */
-            footer {
-                position: fixed;
-                bottom: 0;
-                width: 100%;
-                background-color: var(--primary-blue);
-                color: var(--white);
-                text-align: center;
-                padding: 1rem;
-                box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
-            }
-            
-            /* Input fields */
-            .stTextInput>div>div>input {
-                background-color: var(--white);
-                color: var(--primary-blue);
-                border: 1px solid var(--grey-blue);
-            }
-            
-            /* Select boxes */
-            .stSelectbox>div>div {
-                background-color: var(--white);
-                color: var(--primary-blue);
-                border: 1px solid var(--grey-blue);
-            }
-            
-            /* Radio buttons */
-            .stRadio>label {
-                color: var(--white) !important;
+            /* Charts */
+            .js-plotly-plot {
+                background-color: #2B4F76 !important;
+                border-radius: 10px !important;
+                padding: 1rem !important;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
             }
             
             /* Expander */
             .streamlit-expanderHeader {
-                background-color: var(--light-blue);
-                color: var(--primary-blue);
-                border-radius: 5px;
+                background-color: #2B4F76 !important;
+                color: white !important;
+                border-radius: 5px !important;
             }
             
-            /* Main content background */
-            .main .block-container {
-                background-color: var(--primary-blue);
-                padding: 2rem;
-                border-radius: 10px;
+            /* Footer */
+            footer {
+                background-color: #2B4F76;
+                color: white;
+                text-align: center;
+                padding: 1rem;
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+                box-shadow: 0 -4px 6px rgba(0,0,0,0.1);
             }
             
-            /* Number input */
-            .stNumberInput input {
-                color: var(--primary-blue) !important;
-                background-color: var(--white) !important;
+            footer a {
+                color: #4CAF50 !important;
+                text-decoration: none;
             }
             
-            /* Selectbox text */
-            .stSelectbox div[data-baseweb="select"] span {
-                color: var(--primary-blue) !important;
+            /* Headings */
+            h1, h2, h3, h4, h5, h6 {
+                color: white !important;
+            }
+            
+            /* Text */
+            p, span, label {
+                color: white !important;
+            }
+            
+            /* Success messages */
+            .stSuccess {
+                background-color: #4CAF50 !important;
+                color: white !important;
+            }
+            
+            /* Error messages */
+            .stError {
+                background-color: #f44336 !important;
+                color: white !important;
             }
             </style>
         """, unsafe_allow_html=True)
@@ -337,22 +334,22 @@ class RacingDashboard:
             x=performance_data['Date'],
             y=performance_data['P/L'],
             mode='lines',
-            line=dict(color='#E6EEF8', width=2),
+            line=dict(color='#4CAF50', width=2),
             fill='tozeroy',
-            fillcolor='rgba(230, 238, 248, 0.1)'
+            fillcolor='rgba(76, 175, 80, 0.1)'
         ))
         fig.update_layout(
             title="Daily P/L Performance",
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             yaxis=dict(
-                gridcolor='rgba(255,255,255,0.2)',
-                zerolinecolor='rgba(255,255,255,0.5)',
+                gridcolor='rgba(255,255,255,0.1)',
+                zerolinecolor='rgba(255,255,255,0.2)',
                 color='white'
             ),
             xaxis=dict(
-                gridcolor='rgba(255,255,255,0.2)',
-                zerolinecolor='rgba(255,255,255,0.5)',
+                gridcolor='rgba(255,255,255,0.1)',
+                zerolinecolor='rgba(255,255,255,0.2)',
                 color='white'
             ),
             font=dict(color='white')
@@ -380,8 +377,8 @@ class RacingDashboard:
                 y=[1, 2, 1, 3, 2],
                 mode='lines+markers',
                 name='Speed Positions',
-                line=dict(color='#E6EEF8', width=2),
-                marker=dict(color='#2B4F76', size=10)
+                line=dict(color='#4CAF50', width=2),
+                marker=dict(color='#4CAF50', size=10)
             ))
             fig.update_layout(
                 title="Race Speed Map",
@@ -391,13 +388,13 @@ class RacingDashboard:
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 yaxis=dict(
-                    gridcolor='rgba(255,255,255,0.2)',
-                    zerolinecolor='rgba(255,255,255,0.5)',
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
                     color='white'
                 ),
                 xaxis=dict(
-                    gridcolor='rgba(255,255,255,0.2)',
-                    zerolinecolor='rgba(255,255,255,0.5)',
+                    gridcolor='rgba(255,255,255,0.1)',
+                    zerolinecolor='rgba(255,255,255,0.2)',
                     color='white'
                 ),
                 font=dict(color='white')
