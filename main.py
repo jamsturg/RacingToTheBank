@@ -6,6 +6,12 @@ import time
 import logging
 from typing import Optional
 import sys
+import utils.logger as logger
+from advanced_racing_predictor import AdvancedRacingPredictor
+from utils.statistical_predictor import AdvancedStatistics
+from utils.form_guide import FormAnalysis
+from account_management import AccountManager
+from utils.api_client import TABApiClient
 
 # Configure logging
 logging.basicConfig(
@@ -15,24 +21,11 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout)
     ]
 )
-logger = logging.getLogger(__name__)
-
-# Import components with error handling
-def import_components():
-    try:
-        from advanced_racing_predictor import AdvancedRacingPredictor
-        from utils.statistical_predictor import AdvancedStatistics
-        from utils.form_guide import FormAnalysis
-        from account_management import AccountManager
-        from utils.api_client import TABApiClient
-        return (AdvancedRacingPredictor, AdvancedStatistics, FormAnalysis, 
-                AccountManager, TABApiClient)
-    except ImportError as e:
-        logger.error(f"Failed to import required components: {str(e)}")
-        st.error("Failed to load required components. Please check the logs.")
-        st.stop()
+logger = logger.get_logger(__name__)
 
 class RacingDashboard:
+    """Main dashboard application"""
+    
     def __init__(self):
         """Initialize the dashboard with error handling"""
         try:
@@ -43,16 +36,9 @@ class RacingDashboard:
                 initial_sidebar_state="expanded"
             )
 
-            # Import components
-            (AdvancedRacingPredictor, AdvancedStatistics, FormAnalysis, 
-             AccountManager, TABApiClient) = import_components()
-
             # Initialize components with retry logic
             self.initialize_session_state()
-            self.initialize_components(
-                AdvancedRacingPredictor, AdvancedStatistics, FormAnalysis,
-                AccountManager, TABApiClient
-            )
+            self.initialize_components()
 
         except Exception as e:
             logger.error(f"Error initializing dashboard: {str(e)}")
@@ -75,8 +61,7 @@ class RacingDashboard:
             st.session_state.error_count = 0
             st.session_state.retry_delay = 1
 
-    def initialize_components(self, AdvancedRacingPredictor, AdvancedStatistics,
-                            FormAnalysis, AccountManager, TABApiClient):
+    def initialize_components(self):
         """Initialize analysis components with retry logic"""
         max_retries = 3
         retry_count = 0
@@ -274,7 +259,7 @@ class RacingDashboard:
             st.error("Error loading race analysis. Please try refreshing.")
 
     def render_form_guide(self):
-        """Render enhanced interactive form guide"""
+        """Render form guide page"""
         try:
             st.header("Form Guide")
             

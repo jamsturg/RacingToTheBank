@@ -8,7 +8,7 @@ import plotly.express as px
 from dataclasses import dataclass
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from .logger import get_logger
+import utils.logger as logger
 
 @dataclass
 class FormMetrics:
@@ -31,7 +31,7 @@ class FormAnalysis:
     """Enhanced form analysis with advanced features"""
     
     def __init__(self):
-        self.logger = get_logger(__name__)
+        self.logger = logger.get_logger(__name__)
         self.scaler = StandardScaler()
         self.kmeans = KMeans(n_clusters=5, random_state=42)
 

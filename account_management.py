@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import uuid
 import json
 from decimal import Decimal
-from .utils.logger import get_logger
+import utils.logger as logger
 
 @dataclass
 class Transaction:
@@ -42,7 +42,7 @@ class AccountManager:
     """Enhanced account management with advanced features"""
     
     def __init__(self):
-        self.logger = get_logger(__name__)
+        self.logger = logger.get_logger(__name__)
         self.initialize_session_state()
 
     def initialize_session_state(self):
