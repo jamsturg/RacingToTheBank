@@ -1,457 +1,195 @@
 import streamlit as st
+import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from decimal import Decimal
-try:
-    import pandas as pd
-    import plotly.graph_objects as go
-    HAS_DEPENDENCIES = True
-except ImportError:
-    HAS_DEPENDENCIES = False
-from tab_api_client import TABApiClient, APIError
-import pytz
-import requests
-import time
-from utils.logger import frontend_logger, LoggerMixin, log_execution_time
+import pandas as pd
+from typing import Dict, List
 
-class AccountManager(LoggerMixin):
+class AccountManager:
     def __init__(self):
-        super().__init__()
-        # Check dependencies
-        if not HAS_DEPENDENCIES:
-            st.error("Required dependencies (pandas, plotly) not available. Please install them using: pip install --user pandas plotly")
-            return
-        # Initialize session state variables
-        self._init_session_state()
+        self.logger = logging.getLogger(__name__)
+        self.initialize_session_state()
 
-    def _init_session_state(self):
-        """Initialize all required session state variables"""
-        session_vars = {
-            'account': None,
-            'logged_in': False,
-            'tab_client': None,
-            'account_token': None,
-            'login_error': None,
-            'auth_attempts': 0,
-            'last_balance_check': None,
-            'loading_state': False
-        }
-        
-        for var, default in session_vars.items():
-            if var not in st.session_state:
-                st.session_state[var] = default
+    def initialize_session_state(self):
+        """Initialize account-related session state variables"""
+        if 'account_balance' not in st.session_state:
+            st.session_state.account_balance = 1000.00
+        if 'pending_bets' not in st.session_state:
+            st.session_state.pending_bets = []
+        if 'betting_history' not in st.session_state:
+            st.session_state.betting_history = []
+        if 'daily_pl' not in st.session_state:
+            st.session_state.daily_pl = 0.0
 
-    def render_login(self):
-        """Render login interface with improved styling"""
-        if not st.session_state.logged_in:
-            # Add custom CSS for login page
-            st.markdown('''
-                <style>
-                    .login-container {
-                        max-width: 400px;
-                        margin: 2rem auto;
-                        padding: 2rem;
-                        border-radius: 10px;
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                        background: white;
-                    }
-                    .login-header {
-                        text-align: center;
-                        margin-bottom: 2rem;
-                    }
-                    .login-header h1 {
-                        color: #1E88E5;
-                        font-size: 2.5rem;
-                        margin-bottom: 0.5rem;
-                    }
-                    .login-header p {
-                        color: #666;
-                        font-style: italic;
-                    }
-                    .login-form {
-                        margin-top: 1.5rem;
-                    }
-                    .login-error {
-                        background: #ffebee;
-                        color: #c62828;
-                        padding: 0.8rem;
-                        border-radius: 5px;
-                        margin-bottom: 1rem;
-                    }
-                    .stButton button {
-                        width: 100%;
-                        background: #1E88E5;
-                        color: white;
-                        padding: 0.8rem;
-                        border: none;
-                        border-radius: 5px;
-                        cursor: pointer;
-                        font-weight: bold;
-                        margin-top: 1rem;
-                    }
-                    .guest-login {
-                        text-align: center;
-                        margin: 1rem 0;
-                    }
-                    .divider {
-                        text-align: center;
-                        margin: 1.5rem 0;
-                        position: relative;
-                    }
-                    .divider::before,
-                    .divider::after {
-                        content: '';
-                        position: absolute;
-                        top: 50%;
-                        width: 45%;
-                        height: 1px;
-                        background: #ddd;
-                    }
-                    .divider::before { left: 0; }
-                    .divider::after { right: 0; }
-                </style>
-            ''', unsafe_allow_html=True)
-
-            # Render login form in container
-            st.markdown('<div class="login-container">', unsafe_allow_html=True)
-            
-            # Login header
-            st.markdown('''
-                <div class="login-header">
-                    <h1>💰 To The Bank</h1>
-                    <p>Smart Racing Analytics</p>
-                </div>
-            ''', unsafe_allow_html=True)
-
-            # Guest login button
-            st.markdown('<div class="guest-login">', unsafe_allow_html=True)
-            if st.button("Continue as Guest", key="guest_login", type="secondary"):
-                st.session_state.logged_in = True
-                st.session_state.account = {
-                    'user_id': 'guest',
-                    'account_number': 'GUEST',
-                    'balance': 0.0,
-                    'pending_bets': [],
-                    'bet_history': [],
-                    'preferences': {}
-                }
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Divider
-            st.markdown('<div class="divider">OR</div>', unsafe_allow_html=True)
-
-            # Show any existing error message
-            if st.session_state.login_error:
-                st.markdown(f'''
-                    <div class="login-error">
-                        {st.session_state.login_error}
-                    </div>
-                ''', unsafe_allow_html=True)
-                st.session_state.login_error = None
-
-            # Login form
-            with st.form("login_form", clear_on_submit=True):
-                account_number = st.text_input(
-                    "TAB Account Number",
-                    placeholder="Enter your account number",
-                    help="Your TAB account number"
-                )
-                password = st.text_input(
-                    "Password",
-                    type="password",
-                    placeholder="Enter your password",
-                    help="Your TAB account password"
-                )
-                
-                if st.form_submit_button("Login", use_container_width=True):
-                    if account_number and password:
-                        st.session_state.auth_attempts += 1
-                        
-                        # Add rate limiting
-                        if st.session_state.auth_attempts > 5:
-                            st.error("Too many login attempts. Please try again later.")
-                            time.sleep(5)  # Add delay after multiple attempts
-                        else:
-                            with st.spinner("Authenticating..."):
-                                if self._validate_login(account_number, password):
-                                    try:
-                                        account_data = self._load_account(account_number)
-                                        st.session_state.logged_in = True
-                                        st.session_state.account = account_data
-                                        st.success("Login successful!")
-                                        st.rerun()
-                                    except Exception as e:
-                                        st.error(f"Failed to load account: {str(e)}")
-                    else:
-                        st.error("Please enter both account number and password")
-
-            st.markdown('</div>', unsafe_allow_html=True)  # Close login container
-
-            # Help text
-            st.markdown('''
-                <div style="text-align: center; margin-top: 2rem; color: #666;">
-                    <p>Need help? <a href="https://tab.com.au/help" target="_blank">Contact TAB Support</a></p>
-                </div>
-            ''', unsafe_allow_html=True)
-        else:
-            self.render_account_summary()
-
-    def _validate_login(self, account_number: str, password: str) -> bool:
-        """Validate login credentials using TAB API"""
+    def login(self, username: str, password: str) -> bool:
+        """Authenticate user"""
         try:
-            if not st.session_state.tab_client:
-                st.session_state.tab_client = TABApiClient()
-                
-            url = f"{st.session_state.tab_client.base_url}/oauth/token"
-            
-            # Log attempt (excluding password)
-            self.logger.info(f"Attempting login for account: {account_number}")
-            
-            # Validate credentials before making request
-            if not st.session_state.tab_client.client_id:
-                self.logger.error("Missing TAB_CLIENT_ID environment variable")
-                st.session_state.login_error = "System configuration error: Missing API client ID"
-                return False
-                
-            if not st.session_state.tab_client.client_secret:
-                self.logger.error("Missing TAB_CLIENT_SECRET environment variable") 
-                st.session_state.login_error = "System configuration error: Missing API client secret"
-                return False
-                
-            if not account_number or not password:
-                self.logger.error("Missing account number or password")
-                st.session_state.login_error = "Please enter both account number and password"
-                return False
-                
-            data = {
-                'grant_type': 'password',
-                'client_id': st.session_state.tab_client.client_id,
-                'client_secret': st.session_state.tab_client.client_secret,
-                'username': account_number,
-                'password': password
-            }
-            
-            headers = {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json'
-            }
-            
-            try:
-                response = requests.post(
-                    url,
-                    data=data,
-                    headers=headers,
-                    timeout=30
-                )
-                
-                self.logger.info(f"OAuth response status: {response.status_code}")
-                self.logger.debug(f"OAuth response headers: {dict(response.headers)}")
-                
-                # Log full response for debugging (excluding sensitive data)
-                try:
-                    resp_data = response.json()
-                    debug_data = {k:v for k,v in resp_data.items() if k not in ['access_token', 'refresh_token']}
-                    self.logger.debug(f"OAuth response data: {debug_data}")
-                except:
-                    self.logger.debug("Could not parse response as JSON")
-                
-                if response.status_code == 200:
-                    try:
-                        auth_data = response.json()
-                        if not auth_data.get('access_token'):
-                            self.logger.error("Missing access token in response")
-                            return False
-                            
-                        st.session_state.tab_client.bearer_token = auth_data['access_token']
-                        st.session_state.tab_client.token_expiry = (
-                            datetime.now(pytz.UTC) + 
-                            timedelta(seconds=auth_data.get('expires_in', 3600))
-                        )
-                        
-                        if refresh_token := auth_data.get('refresh_token'):
-                            st.session_state.tab_client.refresh_token = refresh_token
-                            
-                        return True
-                        
-                    except ValueError as e:
-                        self.logger.error(f"Failed to parse auth response: {str(e)}")
-                        return False
-                        
-                elif response.status_code == 401:
-                    self.logger.error("Invalid credentials")
-                    st.session_state.login_error = "Invalid account number or password"
-                    return False
-                elif response.status_code == 400:
-                    error_data = response.json()
-                    error_msg = error_data.get('error_description', 'Unknown error')
-                    self.logger.error(f"Bad request: {error_msg}")
-                    st.session_state.login_error = f"Login error: {error_msg}"
-                    return False
-                else:
-                    self.logger.error(f"Auth failed with status {response.status_code}")
-                    st.session_state.login_error = "Authentication failed. Please try again."
-                    return False
-                    
-            except requests.exceptions.RequestException as e:
-                self.logger.error(f"OAuth request failed: {str(e)}")
-                st.session_state.login_error = "Connection error. Please try again later."
-                return False
-                
+            # For demo purposes, accept demo/demo
+            return username == "demo" and password == "demo"
         except Exception as e:
             self.logger.error(f"Login error: {str(e)}")
-            st.session_state.login_error = "An unexpected error occurred. Please try again."
             return False
 
-    def _validate_account_data(self, account_data: Dict) -> bool:
-        """Validate account data structure"""
-        required_fields = ['balance', 'pending_bets', 'bet_history']
-        
+    def get_balance(self) -> float:
+        """Get current account balance"""
+        return st.session_state.account_balance
+
+    def get_daily_pl(self) -> float:
+        """Get daily profit/loss"""
+        return st.session_state.daily_pl
+
+    def get_pending_bets(self) -> List[Dict]:
+        """Get list of pending bets"""
+        return st.session_state.pending_bets
+
+    def get_betting_history(self) -> List[Dict]:
+        """Get betting history"""
+        return st.session_state.betting_history
+
+    def place_bet(self, bet_details: Dict) -> bool:
+        """Place a new bet"""
         try:
-            if not all(field in account_data for field in required_fields):
-                self.logger.error("Missing required account data fields")
-                return False
+            if bet_details['stake'] <= st.session_state.account_balance:
+                # Deduct stake from balance
+                st.session_state.account_balance -= bet_details['stake']
                 
-            if not isinstance(account_data['balance'], (int, float, Decimal)):
-                self.logger.error("Invalid balance data type")
-                return False
+                # Add to pending bets
+                bet_details['timestamp'] = datetime.now()
+                bet_details['status'] = 'Pending'
+                st.session_state.pending_bets.append(bet_details)
                 
-            if not isinstance(account_data['pending_bets'], list):
-                self.logger.error("Invalid pending bets data type")
-                return False
-                
-            if not isinstance(account_data['bet_history'], list):
-                self.logger.error("Invalid bet history data type")
-                return False
-                
-            return True
-            
+                return True
+            return False
         except Exception as e:
-            self.logger.error(f"Account data validation error: {str(e)}")
+            self.logger.error(f"Error placing bet: {str(e)}")
             return False
 
-    def _load_account(self, account_number: str) -> Dict:
-        """Load account details with improved error handling"""
-        if not st.session_state.tab_client:
-            raise ValueError("TAB API client not initialized")
-            
+    def settle_bet(self, bet_id: str, result: str, return_amount: float = 0.0):
+        """Settle a pending bet"""
         try:
-            # Get account info with proper error handling
-            try:
-                st.session_state.loading_state = True
-                
-                account_info = st.session_state.tab_client.get_account_balance()
-                pending_bets = st.session_state.tab_client.get_pending_bets()
-                bet_history = st.session_state.tab_client.get_bet_history()
-                
-                account_data = {
-                    'user_id': account_info.get('accountId', ''),
-                    'account_number': account_number,
-                    'balance': Decimal(str(account_info.get('balance', 0))),
-                    'pending_bets': pending_bets.get('bets', []),
-                    'bet_history': bet_history.get('bets', []),
-                    'preferences': account_info.get('preferences', {})
-                }
-                
-                if not self._validate_account_data(account_data):
-                    raise ValueError("Invalid account data structure")
+            for bet in st.session_state.pending_bets:
+                if bet.get('id') == bet_id:
+                    bet['status'] = result
+                    bet['settled_time'] = datetime.now()
                     
-                st.session_state.last_balance_check = datetime.now(pytz.UTC)
-                return account_data
-                
-            except APIError as e:
-                self.logger.error(f"API error while loading account: {str(e)}")
-                raise
-            finally:
-                st.session_state.loading_state = False
-                
+                    if result == 'Won':
+                        st.session_state.account_balance += return_amount
+                        st.session_state.daily_pl += (return_amount - bet['stake'])
+                    else:
+                        st.session_state.daily_pl -= bet['stake']
+                    
+                    # Move to history
+                    st.session_state.betting_history.append(bet)
+                    st.session_state.pending_bets.remove(bet)
+                    break
         except Exception as e:
-            self.logger.error(f"Unexpected error loading account: {str(e)}")
-            raise
+            self.logger.error(f"Error settling bet: {str(e)}")
 
-    def render_account_summary(self):
-        """Render account summary with improved error handling"""
-        if not st.session_state.account:
-            return
-            
-        st.sidebar.subheader("Account")
-        
-        # Show guest mode notice if applicable
-        if st.session_state.account.get('user_id') == 'guest':
-            st.sidebar.warning("Guest Mode - Limited functionality")
-            
+    def get_win_rate(self) -> float:
+        """Calculate win rate"""
         try:
-            # Check if we need to refresh account data (every 5 minutes)
-            if (st.session_state.last_balance_check is None or 
-                datetime.now(pytz.UTC) - st.session_state.last_balance_check > timedelta(minutes=5)):
-                
-                # Show loading state instead of using spinner
-                st.session_state.loading_state = True
-                account_info = st.session_state.tab_client.get_account_balance()
-                st.session_state.loading_state = False
-                
-                if account_info.get('error'):
-                    st.sidebar.warning("Unable to refresh account data")
-                    balance = st.session_state.account['balance']
-                else:
-                    balance = Decimal(str(account_info.get('balance', 0)))
-                    st.session_state.account['balance'] = balance
-                    st.session_state.last_balance_check = datetime.now(pytz.UTC)
-            else:
-                balance = st.session_state.account['balance']
-
-            st.sidebar.metric("Balance", f"${balance:,.2f}")
-            
-            # Quick stats
-            cols = st.sidebar.columns(2)
-            with cols[0]:
-                pending_count = len(st.session_state.account['pending_bets'])
-                st.metric("Pending Bets", pending_count)
-            with cols[1]:
-                today_pl = self._calculate_daily_pl()
-                st.metric("Today's P/L", f"${today_pl:,.2f}", 
-                         delta=f"{today_pl:,.2f}", 
-                         delta_color="normal")
-            
-        except Exception as e:
-            self.logger.error(f"Error rendering account summary: {str(e)}")
-            st.sidebar.error("Failed to update account information")
-
-        # Account actions
-        if st.sidebar.button("Logout"):
-            self.logout()
-
-    def _calculate_daily_pl(self) -> float:
-        """Calculate daily profit/loss with improved error handling"""
-        if not st.session_state.account:
-            return 0.0
-            
-        try:
-            today = datetime.now().strftime("%Y-%m-%d")
-            
-            # Get today's bet history
-            history = st.session_state.tab_client.get_bet_history(start_date=today, end_date=today)
-            if history.get('error'):
-                self.logger.error(f"Error getting bet history: {history['error']}")
+            total_bets = len(st.session_state.betting_history)
+            if total_bets == 0:
                 return 0.0
-                
-            return sum(bet.get('profit', 0) for bet in history.get('bets', []))
             
+            wins = sum(1 for bet in st.session_state.betting_history 
+                      if bet['status'] == 'Won')
+            return (wins / total_bets) * 100
         except Exception as e:
-            self.logger.error(f"Error calculating P/L: {str(e)}")
+            self.logger.error(f"Error calculating win rate: {str(e)}")
             return 0.0
+
+    def get_roi(self) -> float:
+        """Calculate ROI"""
+        try:
+            total_stakes = sum(bet['stake'] for bet in st.session_state.betting_history)
+            if total_stakes == 0:
+                return 0.0
+            
+            total_returns = sum(
+                bet.get('return_amount', 0) 
+                for bet in st.session_state.betting_history 
+                if bet['status'] == 'Won'
+            )
+            
+            return ((total_returns - total_stakes) / total_stakes) * 100
+        except Exception as e:
+            self.logger.error(f"Error calculating ROI: {str(e)}")
+            return 0.0
+
+    def get_daily_turnover(self) -> float:
+        """Get daily betting turnover"""
+        try:
+            today = datetime.now().date()
+            daily_bets = [
+                bet for bet in st.session_state.betting_history
+                if bet['timestamp'].date() == today
+            ]
+            return sum(bet['stake'] for bet in daily_bets)
+        except Exception as e:
+            self.logger.error(f"Error calculating daily turnover: {str(e)}")
+            return 0.0
+
+    def get_performance_metrics(self) -> Dict:
+        """Get comprehensive performance metrics"""
+        try:
+            metrics = {
+                'balance': self.get_balance(),
+                'daily_pl': self.get_daily_pl(),
+                'win_rate': self.get_win_rate(),
+                'roi': self.get_roi(),
+                'daily_turnover': self.get_daily_turnover(),
+                'active_bets': len(self.get_pending_bets()),
+                'total_bets': len(self.get_betting_history())
+            }
+            return metrics
+        except Exception as e:
+            self.logger.error(f"Error calculating performance metrics: {str(e)}")
+            return {}
 
     def logout(self):
         """Log out current user and clear session state"""
-        session_vars = [
-            'logged_in', 'account', 'tab_client', 'account_token',
-            'login_error', 'auth_attempts', 'last_balance_check',
-            'loading_state'
-        ]
-        
-        for var in session_vars:
-            if var in st.session_state:
-                st.session_state[var] = None
+        try:
+            session_vars = [
+                'logged_in', 'account_balance', 'pending_bets',
+                'betting_history', 'daily_pl'
+            ]
+            
+            for var in session_vars:
+                if var in st.session_state:
+                    del st.session_state[var]
+                    
+            st.session_state.logged_in = False
+        except Exception as e:
+            self.logger.error(f"Logout error: {str(e)}")
+
+    def get_performance_chart_data(self) -> pd.DataFrame:
+        """Get data for performance charts"""
+        try:
+            # Get last 30 days of data
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=30)
+            
+            # Create date range
+            dates = pd.date_range(start=start_date, end=end_date, freq='D')
+            
+            # Calculate daily P/L
+            daily_pl = []
+            for date in dates:
+                day_bets = [
+                    bet for bet in st.session_state.betting_history
+                    if bet['timestamp'].date() == date.date()
+                ]
                 
-        st.session_state.logged_in = False
-        st.rerun()
+                pl = sum(
+                    bet.get('return_amount', 0) - bet['stake']
+                    for bet in day_bets
+                )
+                daily_pl.append(pl)
+            
+            return pd.DataFrame({
+                'Date': dates,
+                'P/L': daily_pl
+            })
+        except Exception as e:
+            self.logger.error(f"Error getting performance chart data: {str(e)}")
+            return pd.DataFrame()
