@@ -24,7 +24,20 @@ cd RacingToTheBank
 pip install -r requirements.txt
 ```
 
-3. Run the application:
+3. Set up environment variables:
+   - Copy `.env.example` to `.env`
+   - Update the values in `.env` with your configuration:
+     ```
+     PGHOST=localhost
+     PGDATABASE=racing_db
+     PGUSER=your_username
+     PGPASSWORD=your_password
+     PGPORT=5432
+     
+     PUNTING_FORM_API_KEY=your_api_key
+     ```
+
+4. Run the application:
 ```bash
 streamlit run main.py
 ```
@@ -52,6 +65,24 @@ streamlit run main.py
 - `account_management.py`: Account management functionality
 - `tab_api_client.py`: TAB API integration
 
+## Database Setup
+
+1. Install PostgreSQL if not already installed
+2. Create a new database:
+```sql
+CREATE DATABASE racing_db;
+```
+3. Update the database configuration in your `.env` file
+4. The application will handle table creation and schema management
+
+## API Configuration
+
+1. Get your API key from [Punting Form](https://puntingform.com.au/)
+2. Add your API key to the `.env` file:
+```
+PUNTING_FORM_API_KEY=your_api_key
+```
+
 ## Contributing
 
 1. Fork the repository
@@ -69,3 +100,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Built with [Streamlit](https://streamlit.io/)
 - Data visualization using [Plotly](https://plotly.com/)
 - Statistical analysis with [NumPy](https://numpy.org/) and [Pandas](https://pandas.pydata.org/)
+- Database management with [PostgreSQL](https://www.postgresql.org/)
