@@ -13,3 +13,5 @@ asyncio>=3.4.3
 websocket-client>=1.2.1
 matplotlib>=3.5.0
 seaborn>=0.12.0
+statsmodels>=0.14.0
+xgboost>=2.0.0
