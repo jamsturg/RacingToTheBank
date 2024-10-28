@@ -1,12 +1,18 @@
 [theme]
 primaryColor = "#1E3D59"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#E6EEF8"
-textColor = "#1E3D59"
+backgroundColor = "#1E3D59"
+secondaryBackgroundColor = "#2B4F76"
+textColor = "#FFFFFF"
+font = "sans serif"
 
 [server]
 enableCORS = true
 enableXsrfProtection = true
+maxUploadSize = 200
 
 [browser]
 gatherUsageStats = false
+
+[logger]
+level = "info"
+messageFormat = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
