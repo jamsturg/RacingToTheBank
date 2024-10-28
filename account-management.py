@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
@@ -384,12 +383,3 @@ if __name__ == "__main__":
         layout="wide"
     )
     render_account_page()
-```
-
-Let me continue with visualization utilities. Would you like me to:
-1. Add visualization utilities next?
-2. Continue with betting strategies?
-3. Add helper functions?
-4. Add more components?
-
-Let me know which part you'd like to see next!

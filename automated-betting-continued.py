@@ -1,4 +1,3 @@
-```python
     def _render_bet_history(self):
         """Render betting history analysis continued"""
         completed_bets = [bet for bet in self.bets if hasattr(bet, 'result')]
@@ -339,4 +338,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```

@@ -1,0 +1,694 @@
+
+# 2024-10-26 04:17:46.535669
++y
+
+# 2024-10-26 04:18:50.395668
++can you create an extensive logs file for my backend and front end for my streamlit web app and enhance all the components, check the utils, upgrade the css styles to make it look more professional . add styling and featuresd.
+
+# 2024-10-26 04:21:18.670845
++as
+
+# 2024-10-26 04:21:56.814821
++y
+
+# 2024-10-26 04:22:28.698282
++can you create an extensive logs file for the back end and front end so you can debug fix and enhance my replit streaamlit web app
+
+# 2024-10-26 04:26:12.132807
++add .replit add replit.nix add tab_api_client.py add static/styles.css add utils/api_client.py add utils/data_processor.py add account_management.py 
+
+# 2024-10-26 04:26:13.781454
++y
+
+# 2024-10-26 04:34:54.736589
++/run mkdir -p logs
+
+# 2024-10-26 04:34:54.851496
++/run chmod 755 logs
+
+# 2024-10-26 04:34:54.971098
++/run touch logs/backend.log logs/frontend.log logs/api.log logs/error.log
+
+# 2024-10-26 04:34:55.086586
++/run chmod 644 logs/backend.log logs/frontend.log logs/api.log logs/error.log
+
+# 2024-10-26 04:34:57.549954
++/run tail -f logs/backend.log
+
+# 2024-10-26 04:41:52.339830
++/run tail -f logs/error.log
+
+# 2024-10-26 04:42:03.184722
++fix 
++Collecting usage statistics. To deactivate, set browser.gatherUsageStats to false.
++
++
++  You can now view your Streamlit app in your browser.
++
++  URL: http://0.0.0.0:5000
++
++2024-10-26 04:39:00.931 Uncaught app exception
++Traceback (most recent call last):
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++  File "/home/runner/RacingToTheBank/main.py", line 6, in <module>
++    from account_management import AccountManager
++  File "/home/runner/RacingToTheBank/account_management.py", line 7, in <module>
++    from tab_api_client import TABApiClient, APIError
++  File "/home/runner/RacingToTheBank/tab_api_client.py", line 14, in <module>
++    logging.basicConfig(
++    ^^^^^^^
++NameError: name 'logging' is not defined
++
+
+# 2024-10-26 04:42:04.612774
++y
+
+# 2024-10-26 04:42:19.157591
++/run streamlit run main.py
+
+# 2024-10-26 04:43:16.731669
++/run streamlit run main.py
+
+# 2024-10-26 04:43:21.490700
++fix
+
+# 2024-10-26 04:43:52.034135
++y\
+
+# 2024-10-26 04:43:53.282138
++y
+
+# 2024-10-26 04:43:53.285743
++/run streamlit run main.py
+
+# 2024-10-26 04:45:04.098938
++fix TypeError: run() got an unexpected keyword argument 'port'
++Traceback:
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++File "/home/runner/RacingToTheBank/main.py", line 149, in <module>
++    bootstrap.run(main, "", [], port=8501)]
+
+# 2024-10-26 04:45:20.074861
++n
+
+# 2024-10-26 04:46:01.518204
++
++Collecting usage statistics. To deactivate, set browser.gatherUsageStats to false.
++
++
++  You can now view your Streamlit app in your browser.
++
++  URL: http://0.0.0.0:5000
++
++2024-10-26 04:45:47.464 Uncaught app exception
++Traceback (most recent call last):
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++  File "/home/runner/RacingToTheBank/main.py", line 151, in <module>
++    bootstrap.run(main, "", [])
++TypeError: run() missing 1 required positional argument: 'flag_options'
++2024-10-26 04:45:49.485 Uncaught app exception
++Traceback (most recent call last):
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++  File "/home/runner/RacingToTheBank/main.py", line 151, in <module>
++    bootstrap.run(main, "", [])
++TypeError: run() missing 1 required positional argument: 'flag_options'
+
+# 2024-10-26 04:46:03.112846
++y
+
+# 2024-10-26 04:46:13.418216
++n
+
+# 2024-10-26 04:46:45.710629
++TypeError: expected str, bytes or os.PathLike object, not function
++Traceback:
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++File "/home/runner/RacingToTheBank/main.py", line 152, in <module>
++    bootstrap.run(main, "", [], flag_options)
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/web/bootstrap.py", line 303, in run
++    _fix_sys_path(main_script_path)
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/web/bootstrap.py", line 60, in _fix_sys_path
++    sys.path.insert(0, os.path.dirname(main_script_path))
++                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++File "<frozen posixpath>", line 152, in dirname
+
+# 2024-10-26 04:47:26.342534
++n
+
+# 2024-10-26 04:49:04.054670
++kill running port task 5000
+
+# 2024-10-26 04:49:12.659794
++y
+
+# 2024-10-26 04:49:12.664898
++/run lsof -i :5000 | awk 'NR!=1 {print $2}' | xargs kill -9
+
+# 2024-10-26 04:49:15.659007
++/run sudo lsof -i :5000 | awk 'NR!=1 {print $2}' | xargs sudo kill -9
+
+# 2024-10-26 04:49:19.003467
++ok
+
+# 2024-10-26 04:50:08.857882
++y
+
+# 2024-10-26 04:50:08.862047
++/run pkill -f "streamlit run"
+
+# 2024-10-26 05:32:28.585870
++WHEN I ENTER THE TAB ACC AND PASSWORD FOR THE LOGIN IT DOESNT EVEN WORK
+
+# 2024-10-26 05:38:23.515503
++y
+
+# 2024-10-26 05:38:23.518785
++/run streamlit run main.py
+
+# 2024-10-26 05:38:26.638073
++n
+
+# 2024-10-26 05:39:45.036800
++fix    ///////////////////////////
++  ////////@@@@@@@//////////////
++  ////////@@@@@@@//////////////
++  ////////@@@@@@@//////////////        Curious and driven?
++  ///////////////@@@@@@@///////        Work with us!
++  ///////////////@@@@@@@///////
++  ///////////////@@@@@@@///////        https://join.replit.com/hack.with.us
++  ////////@@@@@@@//////////////
++  ////////@@@@@@@//////////////
++  ////////@@@@@@#//////////////
++   ///////////////////////////
++      /////////////////////
++      
++_app-29413e49060fad6d.js:16 [LaunchDarkly] LaunchDarkly client initialized
++/~:1 <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes">Understand this warningAI
++_app-29413e49060fad6d.js:16 Adding extension: Prettier - Code Formatter Object
++_app-29413e49060fad6d.js:16 Adding extension: Google Cloud Auth Object
++23Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this errorAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'ambient-light-sensor'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'battery'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'execution-while-not-rendered'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'execution-while-out-of-viewport'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'layout-animations'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'legacy-image-formats'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'navigation-override'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'oversized-images'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'publickey-credentials'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'speaker-selection'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'unoptimized-images'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Unrecognized feature: 'unsized-media'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Allow attribute will take precedence over 'allowfullscreen'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++framework-6a141006db76884a.js:1 Allow attribute will take precedence over 'allowpaymentrequest'.
++_ @ framework-6a141006db76884a.js:1Understand this warningAI
++stallwart.build.js:1 stallwart: failed ping 1
++79WARNING: Too many active WebGL contexts. Oldest context will be lost.Understand this warningAI
++2_app-29413e49060fad6d.js:16 webglcontextlost event received
++2_app-29413e49060fad6d.js:16 webgl context not restored; firing onContextLoss
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++stallwart.build.js:1 stallwart: failed ping 1
++stallwart.build.js:1 stallwart: failed ping 2
++stallwart.build.js:1 stallwart: failed ping 3
++stallwart.build.js:1 stallwart: failed ping 4
++stallwart.build.js:1 stallwart: failed ping 5
++stallwart.build.js:1 stallwart: session stalled
++37_app-29413e49060fad6d.js:16 webglcontextlost event received
++37_app-29413e49060fad6d.js:16 webgl context not restored; firing onContextLoss
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++2_app-29413e49060fad6d.js:16 webglcontextlost event received
++2_app-29413e49060fad6d.js:16 webgl context not restored; firing onContextLoss
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++_app-29413e49060fad6d.js:16 webglcontextlost event received
++_app-29413e49060fad6d.js:16 webglcontextrestored event received
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++168WebGL: INVALID_OPERATION: delete: object does not belong to this contextUnderstand this warningAI
++_app-29413e49060fad6d.js:16 webglcontextlost event received
++_app-29413e49060fad6d.js:16 webglcontextrestored event received
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++2_app-29413e49060fad6d.js:16 webglcontextlost event received
++2_app-29413e49060fad6d.js:16 webgl context not restored; firing onContextLoss
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++_app-29413e49060fad6d.js:16 webglcontextlost event received
++_app-29413e49060fad6d.js:16 webgl context not restored; firing onContextLoss
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++3696-72ce5055b6026a39.js:1 WebSocket connection to 'wss://eval2.kirk.platform.replit.com/wsv2/v2.public.Q2dZSXZZM3h1QVlTQmdqY3FmRzRCaUlFYTJseWF6QUFPdW9CQ2lRMU5UVXlNelU0WmkxbU9XVTNMVFF3TVRJdE9ESTRNaTFpTWpGak9UY3haREV3T0RnU0EyNXBlQm9XY21Wd2JHbDBMWEpsY0d3dFptbHNaWE10YTJseWF5SVBVbUZqYVc1blZHOVVhR1ZDWVc1cktneGlhVzl0WlhSbmJHOWlZV3hDVGdvWGNtVndiR2wwTFhKbGNHd3RZbXh2WTJ0ekxXdHBjbXNTRlhKbGNHeHBkQzF5WlhCc0xXMWxkR0V0YTJseWF4b2NjbVZ3YkdsMExXMWhjbWRoY21sdVpTMWliRzlqYTNNdGEybHlhMG9IQ00zNzd3OFFBVkFBV2hwdmJtSnZZWEprYVc1blgyVjRjR1Z5YVdWdVkyVmZhR2xuYUZvUGFXNTBaVzUwWDJKMWMybHVaWE56VWlRSUFSQ0FnSUNBQ0JrQUFBQUFBQUR3UHlFQUFBQUFBQUR3UHlpQWdJQ0FCREFCT0FCZ0FHb1RDTTM3N3c4U0RHSnBiMjFsZEdkc2IySmhiSElaZFhObExXeGhkVzVqYUdSaGNtdHNlUzFrYVhKbFkzUnNlWUlCQWlvQWlnRWlDQUVRZ0lDQWdDQVpBQUFBQUFBQUVFQWhBQUFBQUFBQUVFQW9nSUNBZ0FRd0FKb0JDUW9ITUM0d0xqWTJONkFCQVE9PV0Ck7IzPkDEvxkusRglcEN5n9_CNJ-GgNvfQbcNnF5DnrfNkpyAyjk_uuu81c2d3Q1o2OLfX9ZLNpxuFbL0LQw.Q2dad2NtOWtPak1pQ25KbGNHeHBkQzVqYjIwPQ' failed: 
++connect @ 3696-72ce5055b6026a39.js:1Understand this errorAI
++3_app-29413e49060fad6d.js:16 webglcontextlost event received
++3_app-29413e49060fad6d.js:16 webglcontextrestored event received
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++2_app-29413e49060fad6d.js:16 webglcontextlost event received
++2_app-29413e49060fad6d.js:16 webgl context not restored; firing onContextLoss
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++_app-29413e49060fad6d.js:16 webglcontextlost event received
++_app-29413e49060fad6d.js:16 webgl context not restored; firing onContextLoss
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++_app-29413e49060fad6d.js:16 task queue exceeded allotted deadline by 23ms
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++37_app-29413e49060fad6d.js:16 row is invalid. Race condition?
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++_app-29413e49060fad6d.js:16 Uncaught Error: invalid range
++    at t.AccessibilityManager._handleSelectionChange (b0dc4dc1.f41479dcbe25e1f4.js:1:7491)
++    at HTMLDocument.<anonymous> (b0dc4dc1.f41479dcbe25e1f4.js:1:3604)
++    at HTMLDocument.r (_app-29413e49060fad6d.js:16:2967)Understand this errorAI
++2_app-29413e49060fad6d.js:16 webglcontextlost event received
++2_app-29413e49060fad6d.js:16 webgl context not restored; firing onContextLoss
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++3_app-29413e49060fad6d.js:16 <Item> with non-plain text contents is unsupported by type to select for accessibility. Please add a `textValue` prop.
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++59_app-29413e49060fad6d.js:16 If you do not provide children, you must specify an aria-label for accessibility
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++_app-29413e49060fad6d.js:16 Uncaught Error: invalid range
++    at t.AccessibilityManager._handleSelectionChange (b0dc4dc1.f41479dcbe25e1f4.js:1:7491)
++    at HTMLDocument.<anonymous> (b0dc4dc1.f41479dcbe25e1f4.js:1:3604)
++    at HTMLDocument.r (_app-29413e49060fad6d.js:16:2967)Understand this errorAI
++2_app-29413e49060fad6d.js:16 webglcontextlost event received
++2_app-29413e49060fad6d.js:16 webglcontextrestored event received
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++20_app-29413e49060fad6d.js:16 If you do not provide children, you must specify an aria-label for accessibility
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++_app-29413e49060fad6d.js:16 onClick is deprecated, please use onPress
++(anonymous) @ _app-29413e49060fad6d.js:16Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'ambient-light-sensor'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'battery'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'execution-while-not-rendered'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'execution-while-out-of-viewport'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'layout-animations'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'legacy-image-formats'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'navigation-override'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'oversized-images'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'publickey-credentials'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'speaker-selection'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'unoptimized-images'.Understand this warningAI
++workspace_iframe.html:32 Unrecognized feature: 'unsized-media'.Understand this warningAI
++workspace_iframe.html:32 Allow attribute will take precedence over 'allowfullscreen'.Understand this warningAI
++workspace_iframe.html:32 Allow attribute will take precedence over 'allowpaymentrequest'.Understand this warningAI
++Console.js:61 Gather usage stats:  true
++5552358f-f9e7-4012-8282-b21c971d1088-00-14vpswcm1ihfj.kirk.replit.dev/:1 [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) <input aria-label=​"Password" aria-invalid=​"false" aria-required=​"false" autocomplete=​"new-password" id=​"text_input_2" inputmode=​"text" name placeholder type=​"password" class=​"st-bc st-by st-bz st-c0 st-c1 st-c2 st-c3 st-c4 st-c5 st-c6 st-c7 st-b9 st-c8 st-c9 st-ca st-cb st-cc st-cd st-ce st-cf st-ae st-af st-ag st-cg st-ai st-aj st-bx st-ch st-ci st-cj" value aria-autocomplete=​"list">​
++
+
+# 2024-10-26 05:39:46.498151
++y
+
+# 2024-10-26 05:41:06.253885
++n
+
+# 2024-10-26 06:17:09.316917
++A <label> isn't associated with a form field.
++
++To fix this issue, nest the <input> in the <label> or provide a for attribute on the <label> that matches a form field id.
+
+# 2024-10-26 06:25:13.234277
++n
+
+# 2024-10-26 06:26:33.011004
++add utils/statistical_predictor.py utils/export_utils.py utils/logger.py utils/date_utils.py utils/data_processor.py utils/api_client.py utils/alerts.py i want you to fix everything and enhance and improve everything in each file
+
+# 2024-10-26 06:28:45.994326
++y
+
+# 2024-10-26 06:31:43.847477
++yes 
+
+# 2024-10-26 06:33:31.734828
++ok
+
+# 2024-10-26 06:33:57.873566
++lets continue working on the gui implement as many features aas you can
+
+# 2024-10-26 06:39:14.872961
++y
+
+# 2024-10-26 06:45:14.666616
++/run pip install plotly
+
+# 2024-10-26 06:45:20.639146
++/run streamlit run main.py
+
+# 2024-10-26 06:54:46.115238
++continue
+
+# 2024-10-26 06:55:19.493153
++y
+
+# 2024-10-26 06:55:19.496868
++/run pip install --user plotly streamlit
+
+# 2024-10-26 07:00:53.842621
++/run streamlit run main.py
+
+# 2024-10-26 07:29:49.714927
++Collecting usage statistics. To deactivate, set browser.gatherUsageStats to false.
++
++
++  You can now view your Streamlit app in your browser.
++
++  URL: http://0.0.0.0:8501
++
++2024-10-26 07:29:21.573 Uncaught app exception
++Traceback (most recent call last):
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++  File "/home/runner/RacingToTheBank/main.py", line 6, in <module>
++    from account_management import AccountManager
++  File "/home/runner/RacingToTheBank/account_management.py", line 5, in <module>
++    import pandas as pd
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/pandas/__init__.py", line 19, in <module>
++    raise ImportError(
++ImportError: Unable to import required dependencies:
++numpy: Error importing numpy: you should not try to import numpy from
++        its source directory; please exit the numpy source tree, and relaunch
++        your python interpreter from there.
++2024-10-26 07:29:24.175 Uncaught app exception
++Traceback (most recent call last):
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++  File "/home/runner/RacingToTheBank/main.py", line 6, in <module>
++    from account_management import AccountManager
++  File "/home/runner/RacingToTheBank/account_management.py", line 5, in <module>
++    import pandas as pd
++  File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/pandas/__init__.py", line 19, in <module>
++    raise ImportError(
++ImportError: Unable to import required dependencies:
++numpy: Error importing numpy: you should not try to import numpy from
++        its source directory; please exit the numpy source tree, and relaunch
++        your python interpreter from there.
++
+
+# 2024-10-26 07:29:51.134525
++y
+
+# 2024-10-26 07:30:17.071044
++/run cd /tmp && python3 -m streamlit run /home/runner/RacingToTheBank/main.py
+
+# 2024-10-26 07:34:00.200484
++/run pip uninstall -y numpy pandas plotly
+
+# 2024-10-26 07:34:00.669706
++/run pip install --user numpy pandas plotly
+
+# 2024-10-26 08:02:00.121737
++ccan yuou group up all the files then add them to the chat and go through them one by one fixing them and checking the imports and enhancing the functionality,
+
+# 2024-10-26 08:02:39.310786
++y
+
+# 2024-10-26 08:02:52.590589
++/run cd /tmp && python3 -m streamlit run /home/runner/RacingToTheBank/main.py
+
+# 2024-10-26 08:03:15.575881
++n
+
+# 2024-10-26 08:03:18.734792
++y
+
+# 2024-10-26 08:03:18.739435
++/run python3 -m flake8 main.py
+
+# 2024-10-26 08:03:53.955339
++can you add a feature that allows us to get past the login page called guest, and then this allows us to use all the tools without the account stuff. 
+
+# 2024-10-26 08:04:21.853047
++y
+
+# 2024-10-26 08:04:21.856406
++/run streamlit run main.py
+
+# 2024-10-26 08:07:28.218740
++ImportError: Unable to import required dependencies: numpy: Error importing numpy: you should not try to import numpy from its source directory; please exit the numpy source tree, and relaunch your python interpreter from there.
++Traceback:
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++File "/home/runner/RacingToTheBank/main.py", line 14, in <module>
++    from utils.race_details import render_race_details
++File "/home/runner/RacingToTheBank/utils/race_details.py", line 4, in <module>
++    import pandas as pd
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/pandas/__init__.py", line 19, in <module>
++    raise ImportError(
+
+# 2024-10-26 08:12:55.794019
++y
+
+# 2024-10-26 08:12:55.797468
++/run pip install --user numpy pandas plotly streamlit
+
+# 2024-10-26 08:15:11.682708
++/run streamlit run main.py
+
+# 2024-10-26 08:16:56.633664
++
++Source file changed.
++ImportError: Unable to import required dependencies: numpy: Error importing numpy: you should not try to import numpy from its source directory; please exit the numpy source tree, and relaunch your python interpreter from there.
++Traceback:
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++File "/home/runner/RacingToTheBank/main.py", line 14, in <module>
++    from utils.race_details import render_race_details
++File "/home/runner/RacingToTheBank/utils/race_details.py", line 4, in <module>
++    import pandas as pd
++File "/home/runner/RacingToTheBank/.pythonlibs/lib/python3.11/site-packages/pandas/__init__.py", line 19, in <module>
++    raise ImportError(
+
+# 2024-10-26 08:17:37.644029
++y
+
+# 2024-10-26 08:17:37.647873
++/run cd ~ && python3 -m streamlit run RacingToTheBank/main.py
+
+# 2024-10-26 08:18:48.675186
++n
+
+# 2024-10-26 08:22:02.297621
++UnboundLocalError: cannot access local variable 'session_vars' where it is not associated with a value
++Traceback:
++File "/home/runner/58902817-382f-4b8f-bc0f-eee8fab27b55/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
++    result = func()
++             ^^^^^^
++File "/home/runner/58902817-382f-4b8f-bc0f-eee8fab27b55/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
++    exec(code, module.__dict__)
++File "/home/runner/58902817-382f-4b8f-bc0f-eee8fab27b55/main.py", line 237, in <module>
++    main()
++File "/home/runner/58902817-382f-4b8f-bc0f-eee8fab27b55/main.py", line 212, in main
++    initialize_session_state()
++File "/home/runner/58902817-382f-4b8f-bc0f-eee8fab27b55/main.py", line 84, in initialize_session_state
++    if var in session_vars and not isinstance(st.session_state[var], type(session_vars[var])):
++              ^^^^^^^^^^^^
+
+# 2024-10-26 08:22:31.752280
++y
+
+# 2024-10-26 08:22:31.756058
++/run streamlit run main.py
+
+# 2024-10-26 08:24:02.855818
++
++Running streamlit run main.py
++
++  You can now view your Streamlit app in your browser.
++
++  URL: http://0.0.0.0:8501
++
++2024-10-26 08:23:17,082 - main - WARNING - Invalid type for session variable account, resetting to default
++WARNING:main:Invalid type for session variable account, resetting to default
++2024-10-26 08:23:17,084 - main - ERROR - Client initialization error: 'PuntingFormAPI' object has no attribute 'verify_credentials'
++Traceback (most recent call last):
++  File "/home/runner/RacingToTheBank/main.py", line 113, in initialize_client
++    if not client.verify_credentials():
++           ^^^^^^^^^^^^^^^^^^^^^^^^^
++AttributeError: 'PuntingFormAPI' object has no attribute 'verify_credentials'
++ERROR:main:Client initialization error: 'PuntingFormAPI' object has no attribute 'verify_credentials'
++Traceback (most recent call last):
++  File "/home/runner/RacingToTheBank/main.py", line 113, in initialize_client
++    if not client.verify_credentials():
++           ^^^^^^^^^^^^^^^^^^^^^^^^^
++AttributeError: 'PuntingFormAPI' object has no attribute 'verify_credentials'
++, punting form apikey=7552b21e-851b-4803-b230-d1637a74f05c
+
+# 2024-10-26 08:24:06.213198
++n
+
+# 2024-10-26 08:25:04.253991
++y
+
+# 2024-10-26 08:25:06.127965
++/run streamlit run main.py
+
+# 2024-10-26 08:25:33.822192
++fix
+
+# 2024-10-26 08:25:50.280321
++y
+
+# 2024-10-26 08:25:50.284049
++/run streamlit run main.py
+
+# 2024-10-26 08:28:47.277646
++n
+
+# 2024-10-26 08:28:49.731130
++81Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation' is an invalid sandbox flag.Understand this errorAI
++3696-72ce5055b6026a39.js:1 WebSocket connection to 'wss://eval2.kirk.platform.replit.com/wsv2/v2.public.Q2dZSXZZM3h1QVlTQmdqY3FmRzRCaUlFYTJseWF6QUFPdW9CQ2lRMU5UVXlNelU0WmkxbU9XVTNMVFF3TVRJdE9ESTRNaTFpTWpGak9UY3haREV3T0RnU0EyNXBlQm9XY21Wd2JHbDBMWEpsY0d3dFptbHNaWE10YTJseWF5SVBVbUZqYVc1blZHOVVhR1ZDWVc1cktneGlhVzl0WlhSbmJHOWlZV3hDVGdvWGNtVndiR2wwTFhKbGNHd3RZbXh2WTJ0ekxXdHBjbXNTRlhKbGNHeHBkQzF5WlhCc0xXMWxkR0V0YTJseWF4b2NjbVZ3YkdsMExXMWhjbWRoY21sdVpTMWliRzlqYTNNdGEybHlhMG9IQ00zNzd3OFFBVkFBV2hwdmJtSnZZWEprYVc1blgyVjRjR1Z5YVdWdVkyVmZhR2xuYUZvUGFXNTBaVzUwWDJKMWMybHVaWE56VWlRSUFSQ0FnSUNBQ0JrQUFBQUFBQUR3UHlFQUFBQUFBQUR3UHlpQWdJQ0FCREFCT0FCZ0FHb1RDTTM3N3c4U0RHSnBiMjFsZEdkc2IySmhiSElaZFhObExXeGhkVzVqYUdSaGNtdHNlUzFrYVhKbFkzUnNlWUlCQWlvQWlnRWlDQUVRZ0lDQWdDQVpBQUFBQUFBQUVFQWhBQUFBQUFBQUVFQW9nSUNBZ0FRd0FKb0JDUW9ITUM0d0xqWTJONkFCQVE9PV0Ck7IzPkDEvxkusRglcEN5n9_CNJ-GgNvfQbcNnF5DnrfNkpyAyjk_uuu81c2d3Q1o2OLfX9ZLNpxuFbL0LQw.Q2dad2NtOWtPak1pQ25KbGNHeHBkQzVqYjIwPQ' failed: 
++connect @ 3696-72ce5055b6026a39.js:1Understand this errorAI
++2_app-29413e49060fad6d.js:16 Uncaught Error: invalid range
++    at t.AccessibilityManager._handleSelectionChange (b0dc4dc1.f41479dcbe25e1f4.js:1:7491)
++    at HTMLDocument.<anonymous> (b0dc4dc1.f41479dcbe25e1f4.js:1:3604)
++    at HTMLDocument.r (_app-29413e49060fad6d.js:16:2967)Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++framework-6a141006db76884a.js:1 Unable to preventDefault inside passive event listener invocation.
++preventDefault @ framework-6a141006db76884a.js:1Understand this errorAI
++2_app-29413e49060fad6d.js:16 Uncaught Error: invalid range
++    at t.AccessibilityManager._handleSelectionChange (b0dc4dc1.f41479dcbe25e1f4.js:1:7491)
++    at HTMLDocument.<anonymous> (b0dc4dc1.f41479dcbe25e1f4.js:1:3604)
++    at HTMLDocument.r (_app-29413e49060fad6d.js:16:2967)Understand this errorAI
+
+# 2024-10-26 08:29:08.323313
++y
+
+# 2024-10-26 08:29:13.842393
++/run streamlit run main.py
+
+# 2024-10-26 08:29:32.575387
++fix
+
+# 2024-10-26 08:30:02.946768
++y
+
+# 2024-10-26 08:30:02.949805
++/run streamlit run main.py
+
+# 2024-10-26 08:30:30.648003
++n
+
+# 2024-10-26 08:30:39.036769
++when i login as a guest it says api keys dont work
+
+# 2024-10-26 08:32:38.981242
++y
+
+# 2024-10-26 08:32:38.984516
++/run streamlit run main.py
+
+# 2024-10-26 08:33:21.309001
++fix and enhance. change "racing analysis "to "To The Bank" and use some really creative styling
+
+# 2024-10-26 08:33:59.895219
++y
+
+# 2024-10-26 08:34:03.568691
++/run mkdir -p static
+
+# 2024-10-26 08:34:10.912442
++make the theme dark blue and white 
+
+# 2024-10-26 08:35:14.632231
++n
+
+# 2024-10-26 08:35:39.080509
++can we implement a full bleue white grey darkblue and lightblue colour pallette
+
+# 2024-10-26 08:36:15.676500
++y
+
+# 2024-10-26 08:36:15.680152
++/run streamlit run main.py
+
+# 2024-10-26 08:37:22.251531
++fix the whole login page styling and css and layout and make it professional also change the name to "To The Bank
+
+# 2024-10-26 08:38:17.337336
++y
+
+# 2024-10-26 08:38:17.340671
++/run streamlit run main.py
+
+# 2024-10-26 08:46:57.625022
++n
+
+# 2024-10-26 08:46:59.084175
++can you swap the styling of the colours on the page and
++ centre it and enahance it more and make it morse professi
++onal iun the login page  
+
+# 2024-10-26 08:48:08.220690
++y
+
+# 2024-10-26 08:50:38.130171
++fix
+
+# 2024-10-26 08:58:13.918929
++webpage_content_tool.py\\
+
+# 2024-10-26 08:58:14.463466
++\\\

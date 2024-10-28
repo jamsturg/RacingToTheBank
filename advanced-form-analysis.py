@@ -1,4 +1,3 @@
-```python
 class FormAnalysis:
     def __init__(self):
         self.scaler = StandardScaler()
@@ -382,4 +381,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-```

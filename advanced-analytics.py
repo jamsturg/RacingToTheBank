@@ -1,4 +1,3 @@
-```python
 class AdvancedStatistics:
     def calculate_track_bias_metrics(self, race_history: List[Dict]) -> Dict:
         """Calculate comprehensive track bias metrics"""

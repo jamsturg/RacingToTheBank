@@ -1,0 +1,161 @@
+{
+    "injected_packages": {},
+    "main_package": {
+        "app_paths": [
+            {
+                "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/aider",
+                "__type__": "Path"
+            }
+        ],
+        "app_paths_of_dependencies": {
+            "charset-normalizer": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/normalizer",
+                    "__type__": "Path"
+                }
+            ],
+            "distro": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/distro",
+                    "__type__": "Path"
+                }
+            ],
+            "flake8": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/flake8",
+                    "__type__": "Path"
+                }
+            ],
+            "grep-ast": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/gast",
+                    "__type__": "Path"
+                },
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/grep-ast",
+                    "__type__": "Path"
+                }
+            ],
+            "httpx": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/httpx",
+                    "__type__": "Path"
+                }
+            ],
+            "huggingface-hub": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/huggingface-cli",
+                    "__type__": "Path"
+                }
+            ],
+            "json5": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/pyjson5",
+                    "__type__": "Path"
+                }
+            ],
+            "jsonschema": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/jsonschema",
+                    "__type__": "Path"
+                }
+            ],
+            "litellm": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/litellm",
+                    "__type__": "Path"
+                }
+            ],
+            "markdown-it-py": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/markdown-it",
+                    "__type__": "Path"
+                }
+            ],
+            "numpy": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/f2py",
+                    "__type__": "Path"
+                }
+            ],
+            "openai": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/openai",
+                    "__type__": "Path"
+                }
+            ],
+            "pycodestyle": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/pycodestyle",
+                    "__type__": "Path"
+                }
+            ],
+            "pyflakes": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/pyflakes",
+                    "__type__": "Path"
+                }
+            ],
+            "pygments": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/pygmentize",
+                    "__type__": "Path"
+                }
+            ],
+            "python-dotenv": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/dotenv",
+                    "__type__": "Path"
+                }
+            ],
+            "tqdm": [
+                {
+                    "__Path__": "/home/runner/RacingToTheBank/.cache/pipx/0d11acfbae38908/bin/tqdm",
+                    "__type__": "Path"
+                }
+            ]
+        },
+        "apps": [
+            "aider"
+        ],
+        "apps_of_dependencies": [
+            "normalizer",
+            "distro",
+            "flake8",
+            "pycodestyle",
+            "pyflakes",
+            "gast",
+            "grep-ast",
+            "httpx",
+            "huggingface-cli",
+            "tqdm",
+            "pyjson5",
+            "jsonschema",
+            "litellm",
+            "openai",
+            "dotenv",
+            "markdown-it",
+            "f2py",
+            "pygmentize"
+        ],
+        "include_apps": true,
+        "include_dependencies": false,
+        "man_pages": [],
+        "man_pages_of_dependencies": [],
+        "man_paths": [],
+        "man_paths_of_dependencies": {},
+        "package": "aider-chat",
+        "package_or_url": "aider-chat",
+        "package_version": "0.60.1",
+        "pinned": false,
+        "pip_args": [],
+        "suffix": ""
+    },
+    "pipx_metadata_version": "0.5",
+    "python_version": "Python 3.11.9",
+    "source_interpreter": {
+        "__Path__": "/nix/store/inyy1dbm33g70ikhzlacx78ljl05q88g-python-wrapped-0.1.0/bin/.python-wrapped",
+        "__type__": "Path"
+    },
+    "venv_args": []
+}

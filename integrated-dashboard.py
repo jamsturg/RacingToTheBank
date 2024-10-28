@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 from datetime import datetime, timedelta
 import pandas as pd
@@ -433,4 +432,185 @@ class RacingDashboard:
         self.render_navigation()
         
         # Render main content based on selected page
-        if
+        if st.session_state.page == "Dashboard":
+            self.render_main_dashboard()
+        elif st.session_state.page == "Race Form":
+            self.render_race_form()
+        elif st.session_state.page == "Betting":
+            self.render_betting_dashboard()
+        elif st.session_state.page == "Analysis":
+            self.render_analysis_dashboard()
+        elif st.session_state.page == "Portfolio":
+            self.render_portfolio_dashboard()
+        elif st.session_state.page == "Settings":
+            self.render_settings()
+        
+        # Render bet slip
+        self.render_bet_slip()
+
+    def render_race_form(self):
+        """Render race form page"""
+        st.title("Race Form")
+        
+        # Race selection
+        col1, col2 = st.columns(2)
+        with col1:
+            track = st.selectbox("Track", ["Randwick", "Flemington", "Eagle Farm"])
+        with col2:
+            race = st.selectbox("Race", [f"Race {i}" for i in range(1, 11)])
+            
+        # Form analysis tabs
+        tab1, tab2, tab3 = st.tabs(["Speed Map", "Form Guide", "Statistics"])
+        
+        with tab1:
+            st.subheader("Speed Map")
+            self.visualizer.render_speed_map({})
+            
+        with tab2:
+            st.subheader("Form Guide")
+            self.form_analyzer.render_form_dashboard({})
+            
+        with tab3:
+            st.subheader("Race Statistics")
+            self.historical_analysis.render_race_stats({})
+
+    def render_betting_dashboard(self):
+        """Render betting dashboard"""
+        st.title("Betting Dashboard")
+        
+        # Betting form
+        with st.form("betting_form"):
+            col1, col2 = st.columns(2)
+            with col1:
+                track = st.selectbox("Track", ["Randwick", "Flemington", "Eagle Farm"])
+                race = st.selectbox("Race", [f"Race {i}" for i in range(1, 11)])
+            with col2:
+                bet_type = st.selectbox("Bet Type", ["Win", "Place", "Each Way"])
+                amount = st.number_input("Amount ($)", min_value=1.0, step=10.0)
+            
+            if st.form_submit_button("Place Bet"):
+                self.betting_system.place_bet({
+                    'track': track,
+                    'race': race,
+                    'type': bet_type,
+                    'amount': amount
+                })
+        
+        # Active bets
+        st.subheader("Active Bets")
+        active_bets = self.account_manager.get_pending_bets()
+        if active_bets:
+            bets_df = pd.DataFrame(active_bets)
+            st.dataframe(bets_df, use_container_width=True)
+        else:
+            st.info("No active bets")
+
+    def render_analysis_dashboard(self):
+        """Render analysis dashboard"""
+        st.title("Analysis Dashboard")
+        
+        # Analysis tabs
+        tab1, tab2, tab3 = st.tabs(["Track Bias", "Form Analysis", "Market Analysis"])
+        
+        with tab1:
+            st.subheader("Track Bias Analysis")
+            self.historical_analysis.render_track_bias({})
+            
+        with tab2:
+            st.subheader("Form Analysis")
+            self.form_analyzer.render_form_analysis({})
+            
+        with tab3:
+            st.subheader("Market Analysis")
+            self.historical_analysis.render_market_analysis({})
+
+    def render_portfolio_dashboard(self):
+        """Render portfolio dashboard"""
+        st.title("Portfolio Dashboard")
+        
+        # Key metrics
+        col1, col2, col3, col4 = st.columns(4)
+        metrics = self.account_manager.get_performance_metrics()
+        
+        with col1:
+            st.metric("Balance", f"${metrics['balance']:,.2f}")
+        with col2:
+            st.metric("Daily P/L", f"${metrics['daily_pl']:,.2f}")
+        with col3:
+            st.metric("Win Rate", f"{metrics['win_rate']:.1f}%")
+        with col4:
+            st.metric("ROI", f"{metrics['roi']:.1f}%")
+        
+        # Performance chart
+        st.subheader("Performance Chart")
+        performance_data = self.account_manager.get_performance_chart_data()
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=performance_data['Date'],
+            y=performance_data['P/L'],
+            mode='lines',
+            name='Daily P/L',
+            line=dict(color='#1E3D59', width=2)
+        ))
+        
+        fig.update_layout(
+            title="Daily P/L Performance",
+            xaxis_title="Date",
+            yaxis_title="Profit/Loss ($)",
+            template="plotly_white"
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Betting history
+        st.subheader("Betting History")
+        history = self.account_manager.get_betting_history()
+        if history:
+            history_df = pd.DataFrame(history)
+            st.dataframe(history_df, use_container_width=True)
+        else:
+            st.info("No betting history")
+
+    def render_settings(self):
+        """Render settings page"""
+        st.title("Settings")
+        
+        # Account settings
+        st.subheader("Account Settings")
+        with st.form("account_settings"):
+            st.text_input("Email", value="user@example.com")
+            st.number_input("Default Bet Amount", value=10.0, step=10.0)
+            st.checkbox("Enable Email Notifications")
+            st.checkbox("Enable SMS Notifications")
+            
+            if st.form_submit_button("Save Settings"):
+                st.success("Settings saved successfully")
+        
+        # Betting preferences
+        st.subheader("Betting Preferences")
+        with st.form("betting_preferences"):
+            st.number_input("Maximum Bet Size", value=100.0, step=10.0)
+            st.number_input("Daily Loss Limit", value=500.0, step=50.0)
+            st.multiselect(
+                "Preferred Race Types",
+                ["Thoroughbred", "Harness", "Greyhound"],
+                default=["Thoroughbred"]
+            )
+            
+            if st.form_submit_button("Save Preferences"):
+                st.success("Preferences saved successfully")
+        
+        # Automated betting settings
+        st.subheader("Automated Betting")
+        with st.form("automated_settings"):
+            st.checkbox("Enable Automated Betting")
+            st.number_input("Confidence Threshold", value=80, step=5)
+            st.number_input("Maximum Stakes per Day", value=5, step=1)
+            
+            if st.form_submit_button("Save Automation Settings"):
+                st.success("Automation settings saved successfully")
+
+if __name__ == "__main__":
+    dashboard = RacingDashboard()
+    dashboard.run()
