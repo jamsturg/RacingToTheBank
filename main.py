@@ -11,7 +11,7 @@ from advanced_racing_predictor import AdvancedRacingPredictor
 from utils.statistical_predictor import AdvancedStatistics
 from utils.form_guide import FormAnalysis
 from account_management import AccountManager
-from utils.api_client import TABApiClient
+from utils.api_client import TABApiClient  # Fixed import path
 
 # Configure logging
 logging.basicConfig(
